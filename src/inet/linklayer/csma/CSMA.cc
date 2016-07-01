@@ -31,6 +31,7 @@
 #include "inet/common/INETUtils.h"
 #include "inet/common/INETMath.h"
 #include "inet/common/ModuleAccess.h"
+#include "inet/common/ProtocolTag_m.h"
 #include "inet/networklayer/common/InterfaceEntry.h"
 #include "inet/linklayer/contract/IMACProtocolControlInfo.h"
 #include "inet/common/FindModule.h"
@@ -939,6 +940,7 @@ cPacket *CSMA::decapsMsg(CSMAFrame *macPkt)
     SimpleLinkLayerControlInfo *const controlInfo = new SimpleLinkLayerControlInfo();
     controlInfo->setSrc(macPkt->getSrcAddr());
     packet->ensureTag<InterfaceInd>()->setInterfaceId(interfaceEntry->getInterfaceId());
+    packet->ensureTag<ProtocolReq>()->setProtocol(ProtocolGroup::ethertype.getProtocol(macPkt->getNetworkProtocol()));
     controlInfo->setNetworkProtocol(macPkt->getNetworkProtocol());
     packet->setControlInfo(controlInfo);
     return packet;
