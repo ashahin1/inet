@@ -65,8 +65,6 @@ class IPv4ControlInfo
     @fieldNameSuffix("_var"); //TODO remove when OMNeT++ 4.x compatibility is no longer required
     IPv4Address destAddr;   // destination IPv4 address
     IPv4Address srcAddr;    // source IPv4 address
-    int interfaceId = -1; // interface on which the datagram was received, or
-                          // should be sent (see ~InterfaceTable)
     int socketId = -1;    // application socket identifier or -1
     bool multicastLoop;   // if true, sent multicast datagrams will be looped back
     short protocol @enum(IPProtocolId);  // encapsulated protocol
