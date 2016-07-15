@@ -26,6 +26,7 @@
 #include "inet/networklayer/generic/GenericNetworkProtocolInterfaceData.h"
 #include "inet/networklayer/generic/GenericRoute.h"
 #include "inet/networklayer/generic/GenericRoutingTable.h"
+#include "inet/linklayer/common/InterfaceTag_m.h"
 
 namespace inet {
 
@@ -138,8 +139,8 @@ void GenericNetworkProtocol::endService(cPacket *pk)
 
 const InterfaceEntry *GenericNetworkProtocol::getSourceInterfaceFrom(cPacket *packet)
 {
-    IMACProtocolControlInfo *controlInfo = dynamic_cast<IMACProtocolControlInfo *>(packet->getControlInfo());
-    return controlInfo != nullptr ? interfaceTable->getInterfaceById(controlInfo->getInterfaceId()) : nullptr;
+    auto interfaceInd = packet->getTag<InterfaceInd>();
+    return interfaceInd != nullptr ? interfaceTable->getInterfaceById(interfaceInd->getInterfaceId()) : nullptr;
 }
 
 void GenericNetworkProtocol::handlePacketFromNetwork(GenericDatagram *datagram)
@@ -489,7 +490,7 @@ void GenericNetworkProtocol::sendDatagramToOutput(GenericDatagram *datagram, con
         EV_DETAIL << "output interface " << ie->getName() << " is not broadcast, skipping ARP\n";
         Ieee802Ctrl *controlInfo = new Ieee802Ctrl();
         controlInfo->setEtherType(ETHERTYPE_INET_GENERIC);
-        controlInfo->setInterfaceId(ie->getInterfaceId());
+        datagram->ensureTag<InterfaceReq>()->setInterfaceId(ie->getInterfaceId());
         datagram->setControlInfo(controlInfo);
         send(datagram, "queueOut");
         return;
@@ -511,7 +512,7 @@ void GenericNetworkProtocol::sendDatagramToOutput(GenericDatagram *datagram, con
         Ieee802Ctrl *controlInfo = new Ieee802Ctrl();
         controlInfo->setDest(nextHopMAC);
         controlInfo->setEtherType(ETHERTYPE_INET_GENERIC);
-        controlInfo->setInterfaceId(ie->getInterfaceId());
+        datagram->ensureTag<InterfaceReq>()->setInterfaceId(ie->getInterfaceId());
         datagram->setControlInfo(controlInfo);
 
         // send out

@@ -29,6 +29,7 @@
 #include "inet/networklayer/ipv4/IPv4InterfaceData.h"
 #include "inet/common/lifecycle/NodeOperations.h"
 #include "inet/common/lifecycle/NodeStatus.h"
+#include "inet/linklayer/common/InterfaceTag_m.h"
 
 namespace inet {
 
@@ -211,7 +212,7 @@ void ARP::sendPacketToNIC(cMessage *msg, const InterfaceEntry *ie, const MACAddr
     Ieee802Ctrl *controlInfo = new Ieee802Ctrl();
     controlInfo->setDest(macAddress);
     controlInfo->setEtherType(etherType);
-    controlInfo->setInterfaceId(ie->getInterfaceId());
+    msg->ensureTag<InterfaceReq>()->setInterfaceId(ie->getInterfaceId());
     msg->setControlInfo(controlInfo);
 
     // send out
@@ -296,7 +297,7 @@ void ARP::processARPPacket(ARPPacket *arp)
     dumpARPPacket(arp);
 
     // extract input port
-    InterfaceEntry *ie = ift->getInterfaceById(ctrl->getInterfaceId());
+    InterfaceEntry *ie = ift->getInterfaceById(arp->getMandatoryTag<InterfaceInd>()->getInterfaceId());
     delete arp->removeControlInfo();
 
     //
