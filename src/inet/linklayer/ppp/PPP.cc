@@ -115,7 +115,6 @@ void PPP::initialize(int stage)
                 getDisplayString().setTagArg("i", 2, "100");
             }
         }
-        updateDisplayString();
     }
 }
 
@@ -229,8 +228,6 @@ void PPP::refreshOutGateConnection(bool connected)
 
     if (queueModule && 0 == queueModule->getNumPendingRequests())
         queueModule->requestPacket();
-
-    updateDisplayString();
 }
 
 void PPP::startTransmitting(cPacket *msg)
@@ -352,9 +349,6 @@ void PPP::handleMessage(cMessage *msg)
             }
         }
     }
-
-    if (hasGUI())
-        updateDisplayString();
 }
 
 void PPP::displayBusy()
@@ -374,7 +368,7 @@ void PPP::displayIdle()
     }
 }
 
-void PPP::updateDisplayString()
+void PPP::refreshDisplay() const
 {
     if (datarateChannel != nullptr) {
         char datarateText[40];

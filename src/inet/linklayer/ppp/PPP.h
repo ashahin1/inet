@@ -70,7 +70,7 @@ class INET_API PPP : public MACBase
     virtual cPacket *decapsulate(PPPFrame *pppFrame);
     virtual void displayBusy();
     virtual void displayIdle();
-    virtual void updateDisplayString();
+    virtual void refreshDisplay() const override;
     virtual void refreshOutGateConnection(bool connected);
 
     // cListener function

@@ -195,9 +195,6 @@ void EtherMAC::handleMessage(cMessage *msg)
     else
         throw cRuntimeError("Message received from unknown gate");
 
-    if (hasGUI())
-        updateDisplayString();
-
     printState();
 }
 

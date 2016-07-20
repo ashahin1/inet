@@ -75,18 +75,12 @@ void InterfaceTable::initialize(int stage)
         host = getContainingNode(this);
         WATCH_PTRVECTOR(idToInterface);
     }
-    else if (stage == INITSTAGE_NETWORK_LAYER) {
-        updateDisplayString();
-    }
 }
 
-void InterfaceTable::updateDisplayString()
+void InterfaceTable::refreshDisplay() const
 {
-    if (!hasGUI())
-        return;
-
     char buf[80];
-    sprintf(buf, "%d interfaces", getNumInterfaces());
+    sprintf(buf, "%d interfaces", const_cast<InterfaceTable*>(this)->getNumInterfaces());
     getDisplayString().setTagArg("t", 0, buf);
 }
 
