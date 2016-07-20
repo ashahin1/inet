@@ -21,6 +21,7 @@
 #include "inet/applications/pingapp/PingApp.h"
 
 #include "inet/networklayer/common/EchoPacket_m.h"
+#include "inet/networklayer/common/HopLimitTag_m.h"
 #include "inet/networklayer/common/IPProtocolId_m.h"
 #include "inet/networklayer/common/L3AddressTag_m.h"
 #include "inet/networklayer/contract/INetworkProtocolControlInfo.h"
@@ -356,7 +357,6 @@ void PingApp::sendPingRequest()
     sentCount++;
     IL3AddressType *addressType = destAddr.getAddressType();
     INetworkProtocolControlInfo *controlInfo = addressType->createNetworkProtocolControlInfo();
-    controlInfo->setHopLimit(hopLimit);
 
     cPacket *outPacket = nullptr;
     switch (destAddr.getType()) {
@@ -410,6 +410,7 @@ void PingApp::sendPingRequest()
     auto addressReq = outPacket->ensureTag<L3AddressReq>();
     addressReq->setSource(srcAddr);
     addressReq->setDestination(destAddr);
+    outPacket->ensureTag<HopLimitReq>()->setHopLimit(hopLimit);
     EV_INFO << "Sending ping request #" << msg->getSeqNo() << " to lower layer.\n";
     l3Socket->send(outPacket);
 }
@@ -426,7 +427,8 @@ void PingApp::processPingResponse(PingPayload *msg)
     INetworkProtocolControlInfo *ctrl = check_and_cast<INetworkProtocolControlInfo *>(msg->getControlInfo());
     L3Address src = msg->getMandatoryTag<L3AddressInd>()->getSource();
     //L3Address dest = msg->getMandatoryTag<L3AddressInd>()->getDestination();
-    int msgHopCount = ctrl->getHopLimit();
+    auto msgHopCountTag = msg->getTag<HopLimitInd>();
+    int msgHopCount = msgHopCountTag ? msgHopCountTag->getHopLimit() : -1;
 
     // calculate the RTT time by looking up the the send time of the packet
     // if the send time is no longer available (i.e. the packet is very old and the
