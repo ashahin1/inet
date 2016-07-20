@@ -614,7 +614,6 @@ cPacket *IPv4::decapsulate(IPv4Datagram *datagram, const InterfaceEntry *fromIE)
 
     // create and fill in control info
     IPv4ControlInfo *controlInfo = new IPv4ControlInfo();
-    controlInfo->setProtocol(datagram->getTransportProtocol());
     controlInfo->setTypeOfService(datagram->getTypeOfService());
     controlInfo->setTimeToLive(datagram->getTimeToLive());
 
@@ -622,9 +621,9 @@ cPacket *IPv4::decapsulate(IPv4Datagram *datagram, const InterfaceEntry *fromIE)
     controlInfo->setOrigDatagram(datagram);
 
     packet->setControlInfo(controlInfo);
-    packet->ensureTag<ProtocolInd>()->setProtocol(&Protocol::ipv4);
-    packet->ensureTag<ProtocolReq>()->setProtocol(ProtocolGroup::ipprotocol.getProtocol(datagram->getTransportProtocol()));
-    packet->ensureTag<InterfaceInd>()->setInterfaceId(fromIE ? fromIE->getInterfaceId() : -1);
+    packet->ensureTag<ProtocolTag>()->setProtocol(ProtocolGroup::ipprotocol.getProtocol(datagram->getTransportProtocol()));
+    packet->ensureTag<DispatchProtocolReq>()->setProtocol(ProtocolGroup::ipprotocol.getProtocol(datagram->getTransportProtocol()));
+    packet->ensureTag<InterfaceInd>()->setInterfaceId(fromIE ? fromIE->getInterfaceId() : -1); // TODO: delete, this is added in the interface
     auto l3AddressInd = packet->ensureTag<L3AddressInd>();
     l3AddressInd->setSource(datagram->getSrcAddress());
     l3AddressInd->setDestination(datagram->getDestAddress());
@@ -723,6 +722,7 @@ IPv4Datagram *IPv4::encapsulate(cPacket *transportPacket, IPv4ControlInfo *contr
     IPv4Address dest = l3AddressReq->getDestination().toIPv4();
     delete l3AddressReq;
 
+    datagram->setTransportProtocol(ProtocolGroup::ipprotocol.getProtocolNumber(transportPacket->getMandatoryTag<ProtocolTag>()->getProtocol()));
     datagram->encapsulate(transportPacket);
 
     // set source and destination address
@@ -757,7 +757,6 @@ IPv4Datagram *IPv4::encapsulate(cPacket *transportPacket, IPv4ControlInfo *contr
     else
         ttl = defaultTimeToLive;
     datagram->setTimeToLive(ttl);
-    datagram->setTransportProtocol(controlInfo->getProtocol());
 
     // setting IPv4 options is currently not supported
 
@@ -775,9 +774,7 @@ void IPv4::sendDatagramToOutput(IPv4Datagram *datagram, const InterfaceEntry *ie
         bool isIeee802Lan = ie->isBroadcast() && !ie->getMacAddress().isUnspecified();    // we only need/can do ARP on IEEE 802 LANs
         if (!isIeee802Lan) {
             delete datagram->removeControlInfo();
-            datagram->removeTag<ProtocolReq>();         // send to NIC
-            datagram->ensureTag<InterfaceReq>()->setInterfaceId(ie->getInterfaceId());
-            datagram->ensureTag<ProtocolInd>()->setProtocol(&Protocol::ipv4);
+            datagram->removeTag<DispatchProtocolReq>();         // send to NIC
             sendPacketToNIC(datagram, ie);
         }
         else {
@@ -867,9 +864,7 @@ void IPv4::sendPacketToIeee802NIC(cPacket *packet, const InterfaceEntry *ie, con
     Ieee802Ctrl *controlInfo = new Ieee802Ctrl();
     controlInfo->setEtherType(etherType);
     packet->ensureTag<MACAddressReq>()->setDestinationAddress(macAddress);
-    packet->removeTag<ProtocolReq>();         // send to NIC
-    packet->ensureTag<InterfaceReq>()->setInterfaceId(ie->getInterfaceId());
-    packet->ensureTag<ProtocolInd>()->setProtocol(&Protocol::ipv4);
+    packet->removeTag<DispatchProtocolReq>();         // send to NIC
     packet->setControlInfo(controlInfo);
 
     sendPacketToNIC(packet, ie);
@@ -878,6 +873,10 @@ void IPv4::sendPacketToIeee802NIC(cPacket *packet, const InterfaceEntry *ie, con
 void IPv4::sendPacketToNIC(cPacket *packet, const InterfaceEntry *ie)
 {
     EV_INFO << "Sending " << packet << " to output interface = " << ie->getName() << ".\n";
+    packet->ensureTag<ProtocolTag>()->setProtocol(&Protocol::ipv4);
+    packet->ensureTag<NetworkProtocolTag>()->setProtocol(&Protocol::ipv4);
+    packet->ensureTag<DispatchProtocolInd>()->setProtocol(&Protocol::ipv4);
+    packet->ensureTag<InterfaceReq>()->setInterfaceId(ie->getInterfaceId());
     send(packet, "queueOut");
 }
 
