@@ -376,21 +376,20 @@ void InterfaceTable::updateLinkDisplayString(InterfaceEntry *entry)
         if (!outputGate->getChannel())
             return;
         cDisplayString& displayString = outputGate->getDisplayString();
-        char buf[128];
+        std::ostringstream buf;
+        buf << entry->getFullName();
 #ifdef WITH_IPv4
         if (entry->ipv4Data()) {
-            sprintf(buf, "%s\n%s/%d", entry->getFullName(), entry->ipv4Data()->getIPAddress().str().c_str(), entry->ipv4Data()->getNetmask().getNetmaskLength());
-            displayString.setTagArg("t", 0, buf);
-            displayString.setTagArg("t", 1, "l");
+            buf << "\n" << entry->ipv4Data()->getIPAddress().str() << "/" << entry->ipv4Data()->getNetmask().getNetmaskLength();
         }
 #endif // ifdef WITH_IPv4
 #ifdef WITH_IPv6
         if (entry->ipv6Data() && entry->ipv6Data()->getNumAddresses() > 0) {
-            sprintf(buf, "%s\n%s", entry->getFullName(), entry->ipv6Data()->getPreferredAddress().str().c_str());
-            displayString.setTagArg("t", 0, buf);
-            displayString.setTagArg("t", 1, "l");
+            buf << "\n" << entry->ipv6Data()->getPreferredAddress().str();
         }
 #endif // ifdef WITH_IPv6
+        displayString.setTagArg("t", 0, buf.str().c_str());
+        displayString.setTagArg("t", 1, "l");
     }
 }
 
