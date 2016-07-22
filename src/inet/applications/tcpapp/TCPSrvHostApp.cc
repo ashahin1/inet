@@ -93,8 +93,11 @@ void TCPSrvHostApp::handleMessage(cMessage *msg)
             socket->setOutputGate(gate("socketOut"));
 
             const char *serverThreadClass = par("serverThreadClass");
-            TCPServerThreadBase *proc =
-                check_and_cast<TCPServerThreadBase *>(inet::utils::createOne(serverThreadClass));
+            cModuleType *moduleType = cModuleType::get(serverThreadClass);
+            TCPServerThreadBase *proc = check_and_cast<TCPServerThreadBase *>(moduleType->create("Thread", this));
+            proc->finalizeParameters();
+
+            proc->callInitialize();
 
             socket->setCallbackObject(proc);
             proc->init(this, socket);
