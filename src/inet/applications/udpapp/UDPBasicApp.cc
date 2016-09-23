@@ -121,7 +121,15 @@ void UDPBasicApp::sendPacket()
     L3Address destAddr = chooseDestAddr();
 
     emit(sentPkSignal, payload);
-    socket.sendTo(payload, destAddr, destPort);
+    //
+    UDPSocket::SendOptions *sndOpt = new UDPSocket::SendOptions();
+    IInterfaceTable *ift = nullptr;
+    ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
+    const InterfaceEntry *destIE = const_cast<const InterfaceEntry *>(ift->getInterfaceByName("wlan0"));
+    sndOpt->outInterfaceId = destIE->getInterfaceId();
+    socket.sendTo(payload, destAddr, destPort, sndOpt);
+    //
+    //socket.sendTo(payload, destAddr, destPort);
     numSent++;
 }
 
