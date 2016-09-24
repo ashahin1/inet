@@ -1,0 +1,16 @@
+We need 4 WirelssNICs:
+1- wlan0 for service discovery operations
+2- wlan1 for access point functionality
+3- wlan2 for p2p connections
+4- wlan3 for proxy connections
+
+Service Discovery (wlan0):
+--------------------------
+We use wireless adhoc interfaces for such implementation (by setting the mgmtType paramter to "Ieee80211MgmtAdhoc"). Although in WFD service discovery we don't need prior connections or ip addresses, we can't mimic such behavior without major changes to the INet code. Thus, we let the communications through it to use broadcasted UDP datgarams. Of course we need ip addresses for suh datagrams to travel through the network. To make it simple, we used the IPv4NetworkConfigurator to assign addresses to such interfaces in the ranage 1.x.x.x/8. We don't need to know such IPs while communicating, as we set the destination address to 255.255.255.255 for every sent datagram. In addition, no routing is required in this case, as we target only our first hop neighbors. 
+For our protocol steps that require to transmit through service discovery (device info, WPA credentials), we use a UDP application. The code borrows the skelton of the UDPBasicApp. It is required to set the srcInterface for each transmitted datagram to "wlan0", otherwise the network layer would refuse to broadcast the packets. Another solution is to set the forceBroadcasts parameter of the NetworkLayer to true. However, such change would let the packet to be transmitted through all the interfaces including the loopback one. Which means that we will receive a copy of our own datagram. Also for the UDP socket to accept broadcasted packets from other nodes, we have to set the parameter receiveBroadcast to true.
+
+Acces Point (wlan1):
+--------------------
+We use here wireless interfaces that have their mgmtType paramter set to "Ieee80211MgmtAP". Such part is used to mimc the SoftAP that the GO creates as part of the group creation. We don't need to make major changes to INet code base, so we let all other devices  (p2p and proxy) to connect to this access point using its SSID (legacy mode). DHCP functionality is required to provide IP addresses to connected devices. The DHCPServer app is used to provide such functionality. An initial IP for wlan1 interface is needed before the dhcp could work. The IPv4NetworkConfigurator is used to provide such initial IPs which is in the range 192.168.x.x. The parameter mgmt.encapDecap = "true" needs to be set, otherwise the access point datalink layer won't be able to pass correctly formatted packets to the upper layer.
+The access point is not supposed to be active until the device is selected as a group owner. once active, an SSID is generated in the form "DIRECT-xxxxxx" and the wlan1 IP address is updated to the proposed IP. The proposed IP is negotiated with nearby devices in the service discovery part.
+A TCP application is needed to provide intra-group functionallity. Such application open socket connections for managment and data transfer.
