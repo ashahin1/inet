@@ -13,16 +13,28 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package inet.examples.mytests;
+#include "inet/applications/common/ClipBoard.h"
 
-import inet.applications.contract.IUDPApp;
-import inet.applications.contract.ITCPApp;
+namespace inet {
 
+Define_Module(ClipBoard);
 
-//
-// TODO auto-generated type
-//
-simple WfdApp //like IUDPApp, ITCPApp
-{
-    
+ClipBoard::ClipBoard() {
+    // TODO Auto-generated constructor stub
+    numOfHits = 0;
 }
+
+ClipBoard::~ClipBoard() {
+    // TODO Auto-generated destructor stub
+}
+
+int ClipBoard::getNumOfHits() {
+    return numOfHits;
+}
+
+void ClipBoard::setNumOfHits(int numOfHits) {
+    this->numOfHits = numOfHits;
+    EV_INFO << "ClipBoard No of Hit = " << this->numOfHits;
+}
+
+} /* namespace inet */

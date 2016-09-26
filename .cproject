@@ -123,6 +123,22 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<folderInfo id="org.omnetpp.cdt.gnu.config.debug.229043752.1083805791" name="/" resourcePath="examples/mytests">
+						<toolChain id="org.omnetpp.cdt.gnu.toolchain.debug.382820395" name="GCC for OMNeT++" superClass="org.omnetpp.cdt.gnu.toolchain.debug" unusedChildren="">
+							<tool id="cdt.managedbuild.tool.gnu.archiver.base.2010583180" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base.1843986175"/>
+							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.431165861" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base.1544720771">
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1480705139" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
+							</tool>
+							<tool id="cdt.managedbuild.tool.gnu.c.compiler.base.1534393975" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base.892294620">
+								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.495074483" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
+							</tool>
+							<tool id="cdt.managedbuild.tool.gnu.c.linker.base.2137989898" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.base.1169210834"/>
+							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.base.1177949540" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.base.1065738287"/>
+							<tool id="cdt.managedbuild.tool.gnu.assembler.base.707189373" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base.420284418">
+								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.414945874" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
+							</tool>
+						</toolChain>
+					</folderInfo>
 					<folderInfo id="org.omnetpp.cdt.gnu.config.debug.229043752.1275517272" name="/" resourcePath="src">
 						<toolChain id="org.omnetpp.cdt.gnu.toolchain.debug.2006975904" name="GCC for OMNeT++" superClass="org.omnetpp.cdt.gnu.toolchain.debug" unusedChildren="">
 							<targetPlatform binaryParser="org.eclipse.cdt.core.ELF;org.eclipse.cdt.core.MachO64;org.eclipse.cdt.core.PE" id="org.omnetpp.cdt.targetPlatform" isAbstract="false" name="Windows, Linux, Mac" osList="win32,linux,macosx" superClass="org.omnetpp.cdt.targetPlatform"/>
@@ -211,6 +227,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="examples/mytests"/>
 						<entry excluding="inet/transportlayer/tcp_lwip|inet/applications/voipstream|inet/linklayer/ext|inet/transportlayer/tcp_nsc|inet/routing/extras|transport/tcp_nsc|transport/tcp_lwip" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
 					</sourceEntries>
 				</configuration>
@@ -656,4 +673,5 @@
 			<resource resourceType="PROJECT" workspacePath="/inet"/>
 		</configuration>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 </cproject>

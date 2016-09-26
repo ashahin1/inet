@@ -13,16 +13,13 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package inet.examples.mytests;
-
-import inet.applications.contract.IUDPApp;
-import inet.applications.contract.ITCPApp;
-
+package inet.applications.common;
 
 //
 // TODO auto-generated type
 //
-simple WfdApp //like IUDPApp, ITCPApp
+simple ClipBoard
 {
-    
+    parameters:
+        @display("i=block/table");
 }

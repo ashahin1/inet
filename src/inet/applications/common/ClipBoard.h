@@ -13,16 +13,22 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package inet.examples.mytests;
+#ifndef INET_APPLICATIONS_COMMON_CLIPBOARD_H_
+#define INET_APPLICATIONS_COMMON_CLIPBOARD_H_
 
-import inet.applications.contract.IUDPApp;
-import inet.applications.contract.ITCPApp;
+#include <omnetpp/csimplemodule.h>
 
+namespace inet {
 
-//
-// TODO auto-generated type
-//
-simple WfdApp //like IUDPApp, ITCPApp
-{
-    
-}
+class ClipBoard: public omnetpp::cSimpleModule {
+    int numOfHits;
+public:
+    ClipBoard();
+    virtual ~ClipBoard();
+    int getNumOfHits();
+    void setNumOfHits(int numOfHits);
+};
+
+} /* namespace inet */
+
+#endif /* INET_APPLICATIONS_COMMON_CLIPBOARD_H_ */
