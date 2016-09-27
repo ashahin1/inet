@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program; if not, see <http://www.gnu.org/licenses/>.
 //
-
-#include "inet/applications/common/ClipBoard.h"
 #include "inet/applications/udpapp/UDPBasicApp.h"
 
 #include "inet/applications/base/ApplicationPacket_m.h"
@@ -122,28 +120,7 @@ void UDPBasicApp::sendPacket()
     L3Address destAddr = chooseDestAddr();
 
     emit(sentPkSignal, payload);
-    //
-    UDPSocket::SendOptions *sndOpt = new UDPSocket::SendOptions();
-    IInterfaceTable *ift = nullptr;
-    ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
-    const InterfaceEntry *destIE = const_cast<const InterfaceEntry *>(ift->getInterfaceByName("wlan0"));
-    sndOpt->outInterfaceId = destIE->getInterfaceId();
-
-    ClipBoard *clpBrd = nullptr;
-    clpBrd = getModuleFromPar<ClipBoard>(par("clipBoardModule"), this);
-    if (clpBrd != nullptr)
-    {
-        int hitNo = clpBrd->getNumOfHits()+1;
-        clpBrd->setNumOfHits(hitNo);
-        EV_INFO << "ClibBoard HitNo set to " << hitNo;
-    }else{
-        EV_ERROR << "Can't Access ClibBoard Module";
-    }
-
-
-    socket.sendTo(payload, destAddr, destPort, sndOpt);
-    //
-    //socket.sendTo(payload, destAddr, destPort);
+    socket.sendTo(payload, destAddr, destPort);
     numSent++;
 }
 
