@@ -15,7 +15,8 @@
 
 package inet.examples.mytests;
 
-
+import inet.common.lifecycle.LifecycleController;
+import inet.common.scenario.ScenarioManager;
 import inet.common.figures.DelegateSignalConfigurator;
 import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
 import inet.node.inet.WFDHost;
@@ -29,18 +30,25 @@ import inet.visualizer.integrated.IntegratedCanvasVisualizer;
 network WFDNetwork
 {
     int deviceCount = default(3);
+    @display("bgb=600,600;bgg=100,1,grey95;bgl=3");
     submodules:
+        scenarioManager: ScenarioManager {
+            @display("p=68.544,276.19202");
+        }
+        lifecycleController: LifecycleController {
+            @display("p=69.552,227.80801");
+        }
         configurator: IPv4NetworkConfigurator {
-            @display("p=587.664,225.792");
+            @display("p=68.544,66.528");
         }
         radioMedium: Ieee80211ScalarRadioMedium {
-            @display("p=578.59204,143.136");
+            @display("p=67.536,19.152");
         }
         visualizer: IntegratedCanvasVisualizer {
-            @display("p=579.60004,290.30402");
+            @display("p=68.544,121.968");
         }
         figureHelper: DelegateSignalConfigurator {
-            @display("p=580,350");
+            @display("p=68.544,169.34401");
         }
         device[deviceCount]: WFDHost;
 }

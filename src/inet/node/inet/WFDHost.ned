@@ -17,22 +17,27 @@ package inet.node.inet;
 import inet.applications.common.ClipBoard;
 import inet.linklayer.contract.IMACAddressTable;
 
-
 //
 // TODO auto-generated type
 //
 module WFDHost extends StandardHost
 {
-    string macTableType = default("MACAddressTable"); // type of the ~IMACAddressTable
-
     @display("i=device/palm2;bgl=4");
+    string macTableType = default("MACAddressTable"); // type of the ~IMACAddressTable  
+
     numRadios = default(4);
+
     wlan[0].mgmtType = default("Ieee80211MgmtAdhoc");
     wlan[1].mgmtType = default("Ieee80211MgmtAP");
     wlan[2].mgmtType = default("Ieee80211MgmtSTA");
     wlan[3].mgmtType = default("Ieee80211MgmtSTA");
-    wlan[1].mgmt.encapDecap = default("true");
 
+    wlan[1].mgmt.encapDecap = default("true");
+    wlan[1].mgmt.ssid = default("DIRECT"+string(intuniform(0,9999))+string(intuniform(0,9999)));
+    wlan[1].mgmt.beaconInterval = default(2s);
+    wlan[1].radio.channelNumber = default(intuniform(1,13));
+
+    *.mgmt.numChannels = default(13);
     *.clipBoardModule = default(absPath(".clipBoard"));
 
     submodules:

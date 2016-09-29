@@ -24,8 +24,8 @@ class UDPWFDServiceDiscovery: public UDPBasicApp {
 public:
     UDPWFDServiceDiscovery();
     virtual ~UDPWFDServiceDiscovery();
-    virtual void sendPacket();
-    virtual void processPacket(cPacket *msg);
+    virtual void sendPacket() override;
+    virtual void processPacket(cPacket *msg) override;
 };
 
 } /* namespace inet */

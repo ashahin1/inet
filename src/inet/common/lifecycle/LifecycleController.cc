@@ -60,17 +60,16 @@ void LifecycleController::handleMessage(cMessage *msg)
     throw cRuntimeError("This module does not process messages");
 }
 
-void LifecycleController::processCommand(const cXMLElement& node)
-{
-    // resolve target module
-    const char *target = node.getAttribute("target");
-    cModule *module = getModuleByPath(target);
+void LifecycleController::processOneCommand(const char* target,
+        const cXMLElement& node) {
+    cModule* module = getModuleByPath(target);
     if (!module)
         throw cRuntimeError("Module '%s' not found", target);
 
     // resolve operation
-    const char *operationName = node.getAttribute("operation");
-    LifecycleOperation *operation = check_and_cast<LifecycleOperation *>(inet::utils::createOne(operationName));
+    const char* operationName = node.getAttribute("operation");
+    LifecycleOperation* operation = check_and_cast<LifecycleOperation*>(
+            inet::utils::createOne(operationName));
     std::map<std::string, std::string> params = node.getAttributes();
     params.erase("module");
     params.erase("t");
@@ -78,10 +77,31 @@ void LifecycleController::processCommand(const cXMLElement& node)
     params.erase("operation");
     operation->initialize(module, params);
     if (!params.empty())
-        throw cRuntimeError("Unknown parameter '%s' for operation %s at %s", params.begin()->first.c_str(), operationName, node.getSourceLocation());
+        throw cRuntimeError("Unknown parameter '%s' for operation %s at %s",
+                params.begin()->first.c_str(), operationName,
+                node.getSourceLocation());
 
     // do the operation
     initiateOperation(operation);
+}
+
+void LifecycleController::processCommand(const cXMLElement& node)
+{
+    // resolve target module
+    const char *target = node.getAttribute("target");
+
+    std::string targetStr = std::string(target);
+    if(targetStr.find("*") != std::string::npos)
+    {
+        for(int i=0; i<5;i++){
+            std::string nTarget=targetStr.replace("*", std::string(i));
+
+        }
+    }
+    else
+    {
+        processOneCommand(target, node);
+    }
 }
 
 bool LifecycleController::initiateOperation(LifecycleOperation *operation, IDoneCallback *completionCallback)

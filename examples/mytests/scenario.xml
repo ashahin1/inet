@@ -1,0 +1,11 @@
+ 
+<scenario>
+    <at t="1.0">
+        <tell module="lifecycleController" target="device[0].udpApp[1]" operation="NodeShutdownOperation"/>
+    </at>
+    <at t="70.0">
+        <tell module="lifecycleController" target="device[0].udpApp[1]" operation="NodeStartOperation"/>
+    </at>
+
+</scenario>
+
