@@ -36,7 +36,6 @@ simple DHCPClient like IUDPApp
         string interface = default("");  // which NIC should be configured (i.e. wlan0, eth1 etc.)
         double startTime @unit(s) = default(0s); // starting time of DHCP initialization
         @display("i=block/app2");
-        @networkNode;
     gates:
         input udpIn @labels(UDPControlInfo/up);
         output udpOut @labels(UDPControlInfo/down);

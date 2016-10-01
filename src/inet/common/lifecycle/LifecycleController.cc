@@ -14,6 +14,7 @@
 // Author: Andras Varga (andras@omnetpp.org)
 //
 
+#include <string>
 #include <algorithm>
 #include "inet/common/lifecycle/LifecycleController.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
@@ -75,6 +76,11 @@ void LifecycleController::processOneCommand(const char* target,
     params.erase("t");
     params.erase("target");
     params.erase("operation");
+    const char *number = node.getAttribute("number");
+    if (number != nullptr)
+    {
+        params.erase("number");
+    }
     operation->initialize(module, params);
     if (!params.empty())
         throw cRuntimeError("Unknown parameter '%s' for operation %s at %s",
@@ -90,15 +96,24 @@ void LifecycleController::processCommand(const cXMLElement& node)
     // resolve target module
     const char *target = node.getAttribute("target");
 
-    std::string targetStr = std::string(target);
-    if(targetStr.find("*") != std::string::npos)
+    std::string targetStr (target);
+    std::size_t found = targetStr.find('*');
+    if (found != std::string::npos)
     {
-        for(int i=0; i<5;i++){
-            std::string nTarget=targetStr.replace("*", std::string(i));
-
+        int numOfModules = 0;
+        const char *number = node.getAttribute("number");
+        if (number != nullptr)
+        {
+            numOfModules = atoi(number);
+        }
+        for (int i = 0; i < numOfModules; i++)
+        {
+            targetStr.replace(found, 1, std::to_string(i));
+            processOneCommand(targetStr.c_str(), node);
+            targetStr = std::string(target);
         }
     }
-    else
+    else //It's a single module
     {
         processOneCommand(target, node);
     }

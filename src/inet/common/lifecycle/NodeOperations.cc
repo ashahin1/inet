@@ -29,8 +29,8 @@ Register_Class(NodeCrashOperation);
 
 void NodeOperation::initialize(cModule *module, StringMap& params)
 {
-    if (!isNetworkNode(module))
-        throw cRuntimeError("Node operations may only be applied to network nodes (host, router, etc.)");
+    //if (!isNetworkNode(module))
+        //throw cRuntimeError("Node operations may only be applied to network nodes (host, router, etc.)");
 
     LifecycleOperation::initialize(module, params);
 }
