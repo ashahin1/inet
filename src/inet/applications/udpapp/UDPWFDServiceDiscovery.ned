@@ -22,7 +22,12 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
 {    
     parameters:
         string clipBoardModule = default("");
+        string interface = default("wlan0"); //The interface for sending and receiving the discovery packets
+        string groupInterface = default("wlan2"); //The interface that proforms the WFD group operations
+        string proxyInterface = default("wlan3"); //The interface for proxy connection to the other group
+        string dhcpAppName = default(".udpApp[1]");
         
+        packetName = default("ServiceDiscovery");
         receiveBroadcast = default(true);
         localPort = default(5000);
         destPort = default(5000);

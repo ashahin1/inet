@@ -178,6 +178,8 @@ class INET_API DHCPClient : public cSimpleModule, public cListener, public ILife
     virtual void startApp();
     virtual void stopApp();
     virtual bool handleOperationStage(LifecycleOperation *operation, int stage, IDoneCallback *doneCallback) override;
+    // Parameter change handling
+    virtual void handleParameterChange(const char *parameterName) override;
 
   public:
     DHCPClient() {}

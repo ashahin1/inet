@@ -77,8 +77,7 @@ void LifecycleController::processOneCommand(const char* target,
     params.erase("target");
     params.erase("operation");
     const char *number = node.getAttribute("number");
-    if (number != nullptr)
-    {
+    if (number != nullptr) {
         params.erase("number");
     }
     operation->initialize(module, params);
@@ -96,25 +95,26 @@ void LifecycleController::processCommand(const cXMLElement& node)
     // resolve target module
     const char *target = node.getAttribute("target");
 
-    std::string targetStr (target);
+    //check for multiple modules
+    std::string targetStr(target);
     std::size_t found = targetStr.find('*');
-    if (found != std::string::npos)
-    {
+    if (found != std::string::npos) {
         int numOfModules = 0;
         const char *number = node.getAttribute("number");
-        if (number != nullptr)
-        {
+        if (number != nullptr) {
             numOfModules = atoi(number);
+        } else {
+            cModule *network = dynamic_cast<cModule *>(getOwner());
+            int deviceCount = network->par("deviceCount").longValue();
+            numOfModules = deviceCount;
         }
-        for (int i = 0; i < numOfModules; i++)
-        {
+
+        for (int i = 0; i < numOfModules; i++) {
             targetStr.replace(found, 1, std::to_string(i));
             processOneCommand(targetStr.c_str(), node);
             targetStr = std::string(target);
         }
-    }
-    else //It's a single module
-    {
+    } else { //It's a single module
         processOneCommand(target, node);
     }
 }

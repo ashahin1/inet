@@ -91,7 +91,7 @@ void DHCPClient::initialize(int stage)
 InterfaceEntry *DHCPClient::chooseInterface()
 {
     IInterfaceTable *ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
-    const char *interfaceName = par("interface");
+    const char *interfaceName = par("interface").stringValue();
     InterfaceEntry *ie = nullptr;
 
     if (strlen(interfaceName) > 0) {
@@ -717,6 +717,19 @@ bool DHCPClient::handleOperationStage(LifecycleOperation *operation, int stage, 
     else
         throw cRuntimeError("Unsupported lifecycle operation '%s'", operation->getClassName());
     return true;
+}
+
+void DHCPClient::handleParameterChange(const char *parameterName)
+{
+    if (opp_strlen(parameterName) > 0) {
+        if (opp_strcmp(parameterName, "interface") == 0) {
+            //Restart the app
+            if (isOperational) {
+                stopApp();
+                startApp();
+            }
+        }
+    }
 }
 
 } // namespace inet

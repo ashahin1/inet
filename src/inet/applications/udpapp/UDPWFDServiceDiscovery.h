@@ -17,15 +17,37 @@
 #define INET_APPLICATIONS_UDPAPP_UDPWFDSERVICEDISCOVERY_H_
 
 #include "inet/applications/udpapp/UDPBasicApp.h"
+#include "inet/applications/common/ClipBoard.h"
+#include "inet/applications/udpapp/ServiceDiscoveryPacket_m.h"
 
 namespace inet {
 
 class UDPWFDServiceDiscovery: public UDPBasicApp {
+protected:
+    ClipBoard *clpBrd = nullptr;
+    int numResponseSent = 0;
+    int numResponseRcvd = 0;
+    int numRequestSent = 0;
+    int numRequestRcvd = 0;
+    bool isGroupOwner = false;
+
+    cOutVector endToEndDelayVec;
 public:
     UDPWFDServiceDiscovery();
     virtual ~UDPWFDServiceDiscovery();
     virtual void sendPacket() override;
     virtual void processPacket(cPacket *msg) override;
+    virtual void initialize(int stage) override;
+
+private:
+    void switchDhcpClientToProxy();
+    void switchDhcpClientToGroup();
+    void sendServiceDiscoveryPacket(bool isRequestPacket = true,
+            bool isDeviceInfo = true, simtime_t orgSendTime = 0);
+    void addDeviceInfoToPayLoad(ServiceDiscoveryResponseDeviceInfo *payload,
+            simtime_t orgSendTime);
+    void addSapInfoToPayLoad(ServiceDiscoveryResponseSapInfo *payload,
+            simtime_t orgSendTime);
 };
 
 } /* namespace inet */
