@@ -19,8 +19,23 @@
 #include "inet/applications/udpapp/UDPBasicApp.h"
 #include "inet/applications/common/ClipBoard.h"
 #include "inet/applications/udpapp/ServiceDiscoveryPacket_m.h"
+#include "inet/power/base/EnergyStorageBase.h"
 
 namespace inet {
+
+using namespace inet::power;
+using namespace std;
+
+struct DeviceInfo {
+public:
+    double batteryCapacity = -1.0f;
+    double batteryLevel = -1;
+    bool isCharging = false;
+    string propsedSubnet = "-";
+    string conflictedSubnets = "";
+    string ssid = "";
+    string key = "";
+};
 
 class UDPWFDServiceDiscovery: public UDPBasicApp {
 protected:
@@ -29,9 +44,23 @@ protected:
     int numResponseRcvd = 0;
     int numRequestSent = 0;
     int numRequestRcvd = 0;
+    int numIpConflicts = 0;
     bool isGroupOwner = false;
+//    string proposedSubnet = "";
+//    string conflictedSubnets = "";
+//    string sapSSID = "";
+//    string sapKey = "";
+
+    EnergyStorageBase *energyStorage = nullptr;
+    IEnergyGenerator *energyGenerator = nullptr;
+    cModule *dhcpClient = nullptr;
+    cModule *dhcpServer = nullptr;
+    cModule *apNic = nullptr;
 
     cOutVector endToEndDelayVec;
+
+    map<int, DeviceInfo> peersInfo;
+    DeviceInfo myInfo;
 public:
     UDPWFDServiceDiscovery();
     virtual ~UDPWFDServiceDiscovery();
@@ -48,6 +77,15 @@ private:
             simtime_t orgSendTime);
     void addSapInfoToPayLoad(ServiceDiscoveryResponseSapInfo *payload,
             simtime_t orgSendTime);
+    DeviceInfo getMyInfo();
+    double getRank(bool isCharging, double Capacity, double level);
+    double getRank(DeviceInfo pInfo);
+    double getMyRank();
+    DeviceInfo *getBestRankDevice();
+    string proposeSubnet();
+    bool subnetConflicting();
+    string getConflictFreeSubnet();
+    string getPeersConflictedSubnets();
 };
 
 } /* namespace inet */

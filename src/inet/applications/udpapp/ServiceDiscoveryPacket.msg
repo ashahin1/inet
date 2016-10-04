@@ -35,10 +35,11 @@ packet ServiceDiscoveryResponse extends ServiceDiscoveryPacket {
 }
 
 packet ServiceDiscoveryResponseDeviceInfo extends ServiceDiscoveryResponse {
-    int batteryCapacity;
-    int batteryLevel;
+    double batteryCapacity;
+    double batteryLevel;
     bool isCharging;
     string propsedSubnet;
+    string conflictedSubnets;
 }
 
 packet ServiceDiscoveryResponseSapInfo extends ServiceDiscoveryResponse {

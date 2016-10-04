@@ -25,7 +25,15 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
         string interface = default("wlan0"); //The interface for sending and receiving the discovery packets
         string groupInterface = default("wlan2"); //The interface that proforms the WFD group operations
         string proxyInterface = default("wlan3"); //The interface for proxy connection to the other group
-        string dhcpAppName = default(".udpApp[1]");
+        string dhcpClientAppName = default(".udpApp[1]");
+        string dhcpServerAppName = default(".udpApp[2]");
+        string ApNicName = default(".wlan[1]");
+        int maxSubnetX = default(254);
+        int maxSubnetY = default(254);
+        double rankAlpha = default(0.33);
+        double rankBeta = default (0.33);
+        double rankGamma = default (0.34);
+        double maxBatteryCapacity = default(8000);
         
         packetName = default("ServiceDiscovery");
         receiveBroadcast = default(true);
