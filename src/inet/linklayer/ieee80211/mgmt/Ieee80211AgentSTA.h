@@ -103,6 +103,8 @@ class INET_API Ieee80211AgentSTA : public cSimpleModule, public cListener
 
     // utility method, for debugging
     virtual void dumpAPList(Ieee80211Prim_ScanConfirm *resp);
+    // Parameter change handling
+    virtual void handleParameterChange(const char *parameterName) override;
 };
 
 } // namespace ieee80211

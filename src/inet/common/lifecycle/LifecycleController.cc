@@ -61,6 +61,22 @@ void LifecycleController::handleMessage(cMessage *msg)
     throw cRuntimeError("This module does not process messages");
 }
 
+void LifecycleController::processDirectCommand(cModule* target, bool up) {
+    if (target != nullptr) {
+        // resolve operation
+        const char* operationName = (
+                up ? "NodeStartOperation" : "NodeShutdownOperation");
+        LifecycleOperation* operation = check_and_cast<LifecycleOperation*>(
+                inet::utils::createOne(operationName));
+        std::map<std::string, std::string> params;
+        operation->initialize(target, params);
+        // do the operation
+        initiateOperation(operation);
+    } else {
+        EV_ERROR << "Can't process a command on a nullptr module";
+    }
+}
+
 void LifecycleController::processOneCommand(const char* target,
         const cXMLElement& node) {
     cModule* module = getModuleByPath(target);

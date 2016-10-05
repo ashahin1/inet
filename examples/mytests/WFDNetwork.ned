@@ -30,6 +30,7 @@ import inet.visualizer.integrated.IntegratedCanvasVisualizer;
 network WFDNetwork
 {
     int deviceCount = default(3);
+    
     @display("bgb=600,600;bgg=100,1,grey95;bgl=3");
     submodules:
         scenarioManager: ScenarioManager {

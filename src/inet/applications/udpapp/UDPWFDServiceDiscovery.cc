@@ -14,6 +14,7 @@
 // 
 #include "inet/applications/udpapp/UDPWFDServiceDiscovery.h"
 
+#include "inet/networklayer/ipv4/IPv4InterfaceData.h"
 #include "inet/applications/base/ApplicationPacket_m.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
 #include "inet/common/ModuleAccess.h"
@@ -35,6 +36,18 @@ UDPWFDServiceDiscovery::UDPWFDServiceDiscovery() {
 
 UDPWFDServiceDiscovery::~UDPWFDServiceDiscovery() {
     // TODO Auto-generated destructor stub
+    cancelAndDelete(protocolMsg);
+}
+
+void UDPWFDServiceDiscovery::finish() {
+    recordScalar("IP Conflicts", numIpConflicts);
+    recordScalar("Request Packets Received", numRequestRcvd);
+    recordScalar("Response Packets Received", numResponseRcvd);
+    recordScalar("Request Packets Sent", numRequestSent);
+    recordScalar("Response Packets Sent", numResponseSent);
+    recordScalar("Num of Times Orphaned", numOfTimesOrphaned);
+
+    UDPBasicApp::finish();
 }
 
 void UDPWFDServiceDiscovery::initialize(int stage) {
@@ -42,21 +55,122 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
 
     if (stage == INITSTAGE_LOCAL) {
         clpBrd = getModuleFromPar<ClipBoard>(par("clipBoardModule"), this);
+        lifeCycleCtrl = getModuleFromPar<LifecycleController>(
+                par("lifeCycleControllerModule"), this);
         cModule *device = getContainingNode(this);
         dhcpClient = device->getModuleByPath(
                 par("dhcpClientAppName").stringValue());
         dhcpServer = device->getModuleByPath(
                 par("dhcpServerAppName").stringValue());
         apNic = device->getModuleByPath(par("ApNicName").stringValue());
+        p2pNic = device->getModuleByPath(par("p2pNicName").stringValue());
+        proxyNic = device->getModuleByPath(par("proxyNicName").stringValue());
         energyStorage = dynamic_cast<EnergyStorageBase *>(device->getSubmodule(
                 "energyStorage"));
         energyGenerator = dynamic_cast<IEnergyGenerator *>(device->getSubmodule(
                 "energyGenerator"));
 
-        myInfo = getMyInfo();
+        updateMyInfo(false);
 
         endToEndDelayVec.setName("SrvDsc End-to-End Delay");
+        protocolMsg = new cMessage("Protocol Message");
     }
+}
+
+void UDPWFDServiceDiscovery::processStart() {
+    UDPBasicApp::processStart();
+
+    protocolMsg->setKind(DECLARE_GO);
+    scheduleAt(simTime() + par("declareGoPeriod").doubleValue(), protocolMsg);
+}
+
+void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
+    if (msg->isSelfMessage()) {
+        if (msg->getKind() == DECLARE_GO) {
+            //Compare the rank to the collected ones
+            //if my rank is the best
+            //  start the wlan1 (AP)
+            //  set the ipadress to the proposedOne
+            //  start dhcp server and change its parameters to match the proposed subnet
+            //  declare my self as GO to start sending SAP info
+            //
+            updateMyInfo(true);
+            isGroupOwner = getBestRankDevice() == nullptr;
+            if (isGroupOwner) {
+                if (subnetConflicting())
+                    getConflictFreeSubnet();
+                turnApInterfaceOn();
+                setApIpAddress();
+                setDhcpServerParams();
+                turnDhcpServerOn();
+            }
+
+            protocolMsg->setKind(SELECT_GO);
+            scheduleAt(simTime() + par("selectGoPeriod").doubleValue(),
+                    protocolMsg);
+        } else if (msg->getKind() == SELECT_GO) {
+            //start wlan2 and set its target ssid
+            //start dhcp client and set its intf to wlan2
+            if (!isGroupOwner) {
+                DeviceInfo *bestGo = getBestRankGO();
+                if (bestGo != nullptr) {
+                    changeP2pSSID(bestGo->ssid.c_str());
+                    turnP2pInterfaceOn();
+                    switchDhcpClientToGroup();
+                    turnDhcpClientOn();
+                }else{
+                    EV_INFO << "Orphaned Device Found";
+                    numOfTimesOrphaned++;
+                }
+            }
+
+            protocolMsg->setKind(SET_PROXY_DHCP);
+            scheduleAt(simTime() + par("switchDhcpPeriod").doubleValue(),
+                    protocolMsg);
+        } else if (msg->getKind() == SET_PROXY_DHCP) {
+            //start wlan3 and set its target ssid
+            //switch dhcp client to wlan3 intf
+            if (!isGroupOwner) {
+                if (!noGoAround()) {
+                    changeProxySSID("xyz");//TODO: get the ssid from the tcp app
+                    turnProxyInterfaceOn();
+                    switchDhcpClientToProxy();
+                }
+            }
+
+            protocolMsg->setKind(PROTOCOL_TEARDOWN);
+            scheduleAt(simTime() + par("tearDownPeriod").doubleValue(),
+                    protocolMsg);
+        } else if (msg->getKind() == PROTOCOL_TEARDOWN) {
+            //reset every thing
+            isGroupOwner = false;
+            peersInfo.clear();
+            myInfo = DeviceInfo();
+            //turn other modules off (dhcp, wlan, etc)
+            turnModulesOff();
+
+            protocolMsg->setKind(DECLARE_GO);
+            scheduleAt(simTime() + par("declareGoPeriod").doubleValue(),
+                    protocolMsg);
+        } else {
+            UDPBasicApp::handleMessageWhenUp(msg);
+        }
+
+    } else {
+        UDPBasicApp::handleMessageWhenUp(msg);
+    }
+}
+
+UDPSocket::SendOptions* UDPWFDServiceDiscovery::setDatagramOutInterface() {
+    //Set the output interface for the datagram to let the broadcast to pass
+    UDPSocket::SendOptions* sndOpt = new UDPSocket::SendOptions();
+    IInterfaceTable *ift = nullptr;
+    ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
+    const InterfaceEntry* destIE =
+            const_cast<const InterfaceEntry*>(ift->getInterfaceByName(
+                    par("interface")));
+    sndOpt->outInterfaceId = destIE->getInterfaceId();
+    return sndOpt;
 }
 
 void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
@@ -90,29 +204,50 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
     L3Address destAddr = chooseDestAddr();
     emit(sentPkSignal, payload);
     //Set the output interface for the datagram to let the broadcast to pass
-    UDPSocket::SendOptions* sndOpt = new UDPSocket::SendOptions();
-    IInterfaceTable *ift = nullptr;
-    ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
-    const InterfaceEntry* destIE =
-            const_cast<const InterfaceEntry*>(ift->getInterfaceByName(
-                    par("interface")));
-    sndOpt->outInterfaceId = destIE->getInterfaceId();
-//    if (clpBrd != nullptr) {
-//        int hitNo = clpBrd->getNumOfHits() + 1;
-//        clpBrd->setNumOfHits(hitNo);
-//        EV_INFO << "ClibBoard HitNo set to " << hitNo;
-//    } else {
-//        EV_ERROR << "Can't Access ClibBoard Module";
-//    }
+    UDPSocket::SendOptions* sndOpt = setDatagramOutInterface();
     socket.sendTo(payload, destAddr, destPort, sndOpt);
-    //switchDhcpClientToProxy();
-    //
     numSent++;
 }
 
 void UDPWFDServiceDiscovery::sendPacket() {
     //Send requests per the defined schedule
-    sendServiceDiscoveryPacket();
+    if (!isGroupOwner) {
+        sendServiceDiscoveryPacket();
+    }
+}
+
+void UDPWFDServiceDiscovery::addOrUpdatePeerDevInfo(int senderModuleId,
+        ServiceDiscoveryResponseDeviceInfo* respDevInfo) {
+
+    DeviceInfo pInfo;
+    pInfo.batteryCapacity = respDevInfo->getBatteryCapacity();
+    pInfo.batteryLevel = respDevInfo->getBatteryLevel();
+    pInfo.isCharging = respDevInfo->getIsCharging();
+    pInfo.propsedSubnet = respDevInfo->getPropsedSubnet();
+    if (peersInfo.count(senderModuleId) > 0) {
+        DeviceInfo* pf = &peersInfo[senderModuleId];
+        pf->batteryCapacity = pInfo.batteryCapacity;
+        pf->batteryLevel = pInfo.batteryLevel;
+        pf->isCharging = pInfo.isCharging;
+        pf->propsedSubnet = pInfo.propsedSubnet;
+    } else {
+        peersInfo[senderModuleId] = pInfo;
+    }
+}
+
+void UDPWFDServiceDiscovery::addOrUpdatePeerSapInfo(int senderModuleId,
+        ServiceDiscoveryResponseSapInfo* respSapInfo) {
+
+    DeviceInfo pInfo;
+    pInfo.ssid = respSapInfo->getSsid();
+    pInfo.key = respSapInfo->getKey();
+    if (peersInfo.count(senderModuleId) > 0) {
+        DeviceInfo* pf = &peersInfo[senderModuleId];
+        pf->ssid = pInfo.ssid;
+        pf->key = pInfo.key;
+    } else {
+        peersInfo[senderModuleId] = pInfo;
+    }
 }
 
 void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
@@ -125,7 +260,7 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
     if (ServiceDiscoveryRequest *sdReq =
             dynamic_cast<ServiceDiscoveryRequest*>(pk)) {
         //A request is received from a nearby device, so we send a response.
-        myInfo = getMyInfo(); //update myInfo to be used in the next calculation. It also checks for conflicts in subnets
+        updateMyInfo(false); //update myInfo to be used in the next calculation. It also checks for conflicts in subnets
         sendServiceDiscoveryPacket(false, true, sdReq->getOrgSendTime());
         if (isGroupOwner) {
             sendServiceDiscoveryPacket(false, false, sdReq->getOrgSendTime());
@@ -136,44 +271,12 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
         if (ServiceDiscoveryResponseDeviceInfo *respDevInfo =
                 dynamic_cast<ServiceDiscoveryResponseDeviceInfo *>(pk)) {
 
-            //This is a response that contains the device info
-            //Let's:
-            //1- Store it
-            //2- Compute the rank for the device
-            //3- Check for conflicts in the proposed IP
-            //4-
-
-            DeviceInfo pInfo;
-            pInfo.batteryCapacity = respDevInfo->getBatteryCapacity();
-            pInfo.batteryLevel = respDevInfo->getBatteryLevel();
-            pInfo.isCharging = respDevInfo->getIsCharging();
-            pInfo.propsedSubnet = respDevInfo->getPropsedSubnet();
-
-            if (peersInfo.count(senderModuleId) > 0) {
-                DeviceInfo *pf = &peersInfo[senderModuleId];
-                pf->batteryCapacity = pInfo.batteryCapacity;
-                pf->batteryLevel = pInfo.batteryLevel;
-                pf->isCharging = pInfo.isCharging;
-                pf->propsedSubnet = pInfo.propsedSubnet;
-            } else {
-                peersInfo[senderModuleId] = pInfo;
-            }
+            addOrUpdatePeerDevInfo(senderModuleId, respDevInfo);
             eed = simTime() - respDevInfo->getOrgSendTime();
         } else if (ServiceDiscoveryResponseSapInfo *respSapInfo =
                 dynamic_cast<ServiceDiscoveryResponseSapInfo *>(pk)) {
 
-            DeviceInfo pInfo;
-            pInfo.ssid = respSapInfo->getSsid();
-            pInfo.key = respSapInfo->getKey();
-
-            if (peersInfo.count(senderModuleId) > 0) {
-                DeviceInfo *pf = &peersInfo[senderModuleId];
-                pf->ssid = pInfo.ssid;
-                pf->key = pInfo.key;
-            } else {
-                peersInfo[senderModuleId] = pInfo;
-            }
-
+            addOrUpdatePeerSapInfo(senderModuleId, respSapInfo);
             eed = simTime() - respSapInfo->getOrgSendTime();
         }
 
@@ -186,21 +289,98 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
     numReceived++;
 }
 
+void UDPWFDServiceDiscovery::turnModulesOff() {
+    if (lifeCycleCtrl != nullptr) {
+        lifeCycleCtrl->processDirectCommand(dhcpClient, false);
+        lifeCycleCtrl->processDirectCommand(dhcpServer, false);
+        lifeCycleCtrl->processDirectCommand(apNic, false);
+        lifeCycleCtrl->processDirectCommand(p2pNic, false);
+        lifeCycleCtrl->processDirectCommand(proxyNic, false);
+        changeP2pSSID("DIRECT-XXXXXXXX");
+        changeProxySSID("DIRECT-XXXXXXXX");
+    }
+}
+
+void UDPWFDServiceDiscovery::turnDhcpClientOn() {
+    lifeCycleCtrl->processDirectCommand(dhcpClient, true);
+}
+
+void UDPWFDServiceDiscovery::turnDhcpServerOn() {
+    lifeCycleCtrl->processDirectCommand(dhcpServer, true);
+}
+
+void UDPWFDServiceDiscovery::turnApInterfaceOn() {
+    lifeCycleCtrl->processDirectCommand(apNic, true);
+}
+
+void UDPWFDServiceDiscovery::turnP2pInterfaceOn() {
+    lifeCycleCtrl->processDirectCommand(p2pNic, true);
+}
+
+void UDPWFDServiceDiscovery::turnProxyInterfaceOn() {
+    lifeCycleCtrl->processDirectCommand(proxyNic, true);
+}
+
+void UDPWFDServiceDiscovery::changeP2pSSID(const char* ssid) {
+    if (p2pNic != nullptr)
+        p2pNic->getSubmodule("agent")->par("default_ssid").setStringValue(ssid);
+}
+
+void UDPWFDServiceDiscovery::changeProxySSID(const char* ssid) {
+    if (proxyNic != nullptr)
+        proxyNic->getSubmodule("agent")->par("default_ssid").setStringValue(
+                ssid);
+}
+
 void UDPWFDServiceDiscovery::switchDhcpClientToProxy() {
-    if (opp_strcmp(dhcpClient->par("interface").stringValue(),
-            par("groupInterface").stringValue()) == 0)
-        dhcpClient->par("interface").setStringValue(
-                par("proxyInterface").stringValue());
+    if (dhcpClient != nullptr)
+        if (opp_strcmp(dhcpClient->par("interface").stringValue(),
+                par("groupInterface").stringValue()) == 0)
+            dhcpClient->par("interface").setStringValue(
+                    par("proxyInterface").stringValue());
 }
 
 void UDPWFDServiceDiscovery::switchDhcpClientToGroup() {
-    if (opp_strcmp(dhcpClient->par("interface").stringValue(),
-            par("proxyInterface").stringValue()) == 0)
-        dhcpClient->par("interface").setStringValue(
-                par("groupInterface").stringValue());
+    if (dhcpClient != nullptr)
+        if (opp_strcmp(dhcpClient->par("interface").stringValue(),
+                par("proxyInterface").stringValue()) == 0)
+            dhcpClient->par("interface").setStringValue(
+                    par("groupInterface").stringValue());
 }
 
-DeviceInfo UDPWFDServiceDiscovery::getMyInfo() {
+void UDPWFDServiceDiscovery::setApIpAddress() {
+    IInterfaceTable *ift = getModuleFromPar<IInterfaceTable>(
+            par("interfaceTableModule"), this);
+    const char *interfaceName = par("apInterface").stringValue();
+    InterfaceEntry *ie = nullptr;
+    if (strlen(interfaceName) > 0) {
+        ie = ift->getInterfaceByName(interfaceName);
+        if (ie == nullptr)
+            throw cRuntimeError("Interface \"%s\" does not exist",
+                    interfaceName);
+
+        IPv4Address ip;
+        string ipStr = "10." + myInfo.propsedSubnet + ".1";
+        ip.set(ipStr.c_str());
+
+        IPv4Address mask;
+        mask.set("255.255.255.0");
+
+        ie->ipv4Data()->setIPAddress(ip);
+        ie->ipv4Data()->setNetmask(mask);
+    }
+}
+void UDPWFDServiceDiscovery::setDhcpServerParams() {
+    if (dhcpServer != nullptr) {
+        string ipGateway = "10." + myInfo.propsedSubnet + ".1";
+        string ipStr = "10." + myInfo.propsedSubnet + ".2";
+        dhcpServer->par("ipAddressStart").setStringValue(ipStr.c_str());
+        dhcpServer->par("subnetMask").setStringValue("255.255.255.0");
+        dhcpServer->par("gateway").setStringValue(ipGateway.c_str());
+    }
+}
+
+void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
     DeviceInfo mInfo;
     if (energyStorage != nullptr) {
         mInfo.batteryCapacity = energyStorage->getNominalCapacity().get();
@@ -213,15 +393,17 @@ DeviceInfo UDPWFDServiceDiscovery::getMyInfo() {
     }
     mInfo.isCharging = !(genPower == 0);
 
-    mInfo.propsedSubnet = getConflictFreeSubnet();
-    mInfo.conflictedSubnets = getPeersConflictedSubnets();
+    if (!devInfoOnly) {
+        mInfo.propsedSubnet = getConflictFreeSubnet();
+        mInfo.conflictedSubnets = getPeersConflictedSubnets();
 
-    if (apNic != nullptr) {
-        mInfo.ssid = apNic->getSubmodule("mgmt")->par("ssid").str();
-        mInfo.key = "";
+        if (apNic != nullptr) {
+            mInfo.ssid = apNic->getSubmodule("mgmt")->par("ssid").str();
+            mInfo.key = "";
+        }
     }
 
-    return mInfo;
+    myInfo = mInfo;
 }
 
 void UDPWFDServiceDiscovery::addDeviceInfoToPayLoad(
@@ -279,10 +461,33 @@ DeviceInfo *UDPWFDServiceDiscovery::getBestRankDevice() {
     }
 
     if (myRank >= bestRank) {
+        //return null when my rank is the best
         return nullptr;
     } else {
         return bestDevice;
     }
+}
+
+DeviceInfo *UDPWFDServiceDiscovery::getBestRankGO() {
+    double bestRank = -1.0f;
+    double curRank;
+    DeviceInfo *bestDevice = nullptr;
+
+    for (auto& pf : peersInfo) {
+        //check if it is a GO (has ssid)
+        if (pf.second.ssid.compare("") != 0) {
+            curRank = getRank(pf.second);
+            if (curRank > bestRank) {
+                bestRank = curRank;
+                bestDevice = &pf.second;
+            }
+        }
+    }
+    return bestDevice;
+}
+
+bool UDPWFDServiceDiscovery::noGoAround() {
+    return getBestRankGO() == nullptr;
 }
 
 string UDPWFDServiceDiscovery::proposeSubnet() {
@@ -322,7 +527,8 @@ string UDPWFDServiceDiscovery::getPeersConflictedSubnets() {
 bool UDPWFDServiceDiscovery::subnetConflicting() {
     for (auto& pf : peersInfo) {
         //Check if my subnet is in the detected conflicts of other devices
-        if (pf.second.conflictedSubnets.find(myInfo.propsedSubnet) != string::npos)
+        if (pf.second.conflictedSubnets.find(myInfo.propsedSubnet)
+                != string::npos)
             return true;
 
         //Check if my subnet is conflicting with proposed subnets of other devices

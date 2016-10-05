@@ -88,6 +88,7 @@ class INET_API LifecycleController : public cSimpleModule, public IScriptable
     virtual void handleMessage(cMessage *msg) override;
     virtual void processCommand(const cXMLElement& node) override;    // IScriptable
     virtual void processOneCommand(const char* target, const cXMLElement& node);
+    virtual void processDirectCommand(cModule* target, bool up);
     /**
      * Initiate an operation. See the class documentation and ILifecycle for
      * details. The target module will be taken from the operation object.

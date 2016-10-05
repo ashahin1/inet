@@ -120,7 +120,8 @@ class INET_API DHCPServer : public cSimpleModule, public cListener, public ILife
      * For lifecycle management.
      */
     virtual bool handleOperationStage(LifecycleOperation *operation, int stage, IDoneCallback *doneCallback) override;
-
+    // Parameter change handling
+    virtual void handleParameterChange(const char *parameterName) override;
   public:
     DHCPServer();
     virtual ~DHCPServer();

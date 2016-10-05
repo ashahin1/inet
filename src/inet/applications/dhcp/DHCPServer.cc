@@ -494,5 +494,18 @@ bool DHCPServer::handleOperationStage(LifecycleOperation *operation, int stage, 
     return true;
 }
 
+void DHCPServer::handleParameterChange(const char *parameterName)
+{
+    if (opp_strlen(parameterName) > 0) {
+        if (opp_strcmp(parameterName, "subnetMask") == 0) {
+            subnetMask = IPv4Address(par("subnetMask").stringValue());
+        } else if (opp_strcmp(parameterName, "ipAddressStart") == 0) {
+            ipAddressStart = IPv4Address(par("ipAddressStart").stringValue());
+        } else if (opp_strcmp(parameterName, "gateway") == 0) {
+            gateway = IPv4Address(par("gateway").stringValue());
+        }
+    }
+}
+
 } // namespace inet
 

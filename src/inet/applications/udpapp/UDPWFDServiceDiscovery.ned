@@ -22,18 +22,26 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
 {    
     parameters:
         string clipBoardModule = default("");
+        string lifeCycleControllerModule = default("lifecycleController");
         string interface = default("wlan0"); //The interface for sending and receiving the discovery packets
+        string apInterface = default("wlan1"); //The interface for GO operations
         string groupInterface = default("wlan2"); //The interface that proforms the WFD group operations
         string proxyInterface = default("wlan3"); //The interface for proxy connection to the other group
         string dhcpClientAppName = default(".udpApp[1]");
         string dhcpServerAppName = default(".udpApp[2]");
         string ApNicName = default(".wlan[1]");
+        string p2pNicName = default(".wlan[2]");
+        string proxyNicName = default(".wlan[3]");
         int maxSubnetX = default(254);
         int maxSubnetY = default(254);
         double rankAlpha = default(0.33);
         double rankBeta = default (0.33);
         double rankGamma = default (0.34);
         double maxBatteryCapacity = default(8000);
+        double declareGoPeriod @unit(s) = default(this.sendInterval * 10);
+        double selectGoPeriod @unit(s) = default(this.declareGoPeriod);
+        double switchDhcpPeriod @unit(s) = default (this.selectGoPeriod * 5);
+        double tearDownPeriod @unit(s) = default(this.switchDhcpPeriod * 100);
         
         packetName = default("ServiceDiscovery");
         receiveBroadcast = default(true);
