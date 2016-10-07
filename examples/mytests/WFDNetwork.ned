@@ -23,10 +23,7 @@ import inet.node.inet.WFDHost;
 import inet.physicallayer.ieee80211.packetlevel.Ieee80211ScalarRadioMedium;
 import inet.visualizer.integrated.IntegratedCanvasVisualizer;
 
-
-//
-// TODO auto-generated type
-//
+//Wi-Fi Direct Network
 network WFDNetwork
 {
     int deviceCount = default(3);

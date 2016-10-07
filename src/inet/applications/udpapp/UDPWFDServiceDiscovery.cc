@@ -74,12 +74,26 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
 
         endToEndDelayVec.setName("SrvDsc End-to-End Delay");
         protocolMsg = new cMessage("Protocol Message");
+
+        WATCH(myInfo.propsedSubnet);
     }
+}
+
+void UDPWFDServiceDiscovery::resetDevice() {
+    //reset every thing
+    isGroupOwner = false;
+    peersInfo.clear();
+    //myInfo = DeviceInfo();
+    updateMyInfo(false);
+    //turn other modules off (dhcp, wlan, etc)
+    turnModulesOff();
 }
 
 void UDPWFDServiceDiscovery::processStart() {
     UDPBasicApp::processStart();
 
+    //reset every thing
+    resetDevice();
     protocolMsg->setKind(DECLARE_GO);
     scheduleAt(simTime() + par("declareGoPeriod").doubleValue(), protocolMsg);
 }
@@ -118,7 +132,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                     turnP2pInterfaceOn();
                     switchDhcpClientToGroup();
                     turnDhcpClientOn();
-                }else{
+                } else {
                     EV_INFO << "Orphaned Device Found";
                     numOfTimesOrphaned++;
                 }
@@ -132,7 +146,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             //switch dhcp client to wlan3 intf
             if (!isGroupOwner) {
                 if (!noGoAround()) {
-                    changeProxySSID("xyz");//TODO: get the ssid from the tcp app
+                    changeProxySSID("xyz"); //TODO: get the ssid from the tcp app
                     turnProxyInterfaceOn();
                     switchDhcpClientToProxy();
                 }
@@ -142,12 +156,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             scheduleAt(simTime() + par("tearDownPeriod").doubleValue(),
                     protocolMsg);
         } else if (msg->getKind() == PROTOCOL_TEARDOWN) {
-            //reset every thing
-            isGroupOwner = false;
-            peersInfo.clear();
-            myInfo = DeviceInfo();
-            //turn other modules off (dhcp, wlan, etc)
-            turnModulesOff();
+            resetDevice();
 
             protocolMsg->setKind(DECLARE_GO);
             scheduleAt(simTime() + par("declareGoPeriod").doubleValue(),
@@ -260,7 +269,7 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
     if (ServiceDiscoveryRequest *sdReq =
             dynamic_cast<ServiceDiscoveryRequest*>(pk)) {
         //A request is received from a nearby device, so we send a response.
-        updateMyInfo(false); //update myInfo to be used in the next calculation. It also checks for conflicts in subnets
+        updateMyInfo(true); //update myInfo to be used in the next calculation. It also checks for conflicts in subnets
         sendServiceDiscoveryPacket(false, true, sdReq->getOrgSendTime());
         if (isGroupOwner) {
             sendServiceDiscoveryPacket(false, false, sdReq->getOrgSendTime());
@@ -272,6 +281,8 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
                 dynamic_cast<ServiceDiscoveryResponseDeviceInfo *>(pk)) {
 
             addOrUpdatePeerDevInfo(senderModuleId, respDevInfo);
+
+            updateMyInfo(false);
             eed = simTime() - respDevInfo->getOrgSendTime();
         } else if (ServiceDiscoveryResponseSapInfo *respSapInfo =
                 dynamic_cast<ServiceDiscoveryResponseSapInfo *>(pk)) {
@@ -296,7 +307,7 @@ void UDPWFDServiceDiscovery::turnModulesOff() {
         lifeCycleCtrl->processDirectCommand(apNic, false);
         lifeCycleCtrl->processDirectCommand(p2pNic, false);
         lifeCycleCtrl->processDirectCommand(proxyNic, false);
-        changeP2pSSID("DIRECT-XXXXXXXX");
+        changeP2pSSID("DIRECT-XYZXYZ");
         changeProxySSID("DIRECT-XXXXXXXX");
     }
 }
@@ -381,29 +392,32 @@ void UDPWFDServiceDiscovery::setDhcpServerParams() {
 }
 
 void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
-    DeviceInfo mInfo;
     if (energyStorage != nullptr) {
-        mInfo.batteryCapacity = energyStorage->getNominalCapacity().get();
-        mInfo.batteryLevel = energyStorage->getResidualCapacity().get()
-                / mInfo.batteryCapacity;
+        myInfo.batteryCapacity = energyStorage->getNominalCapacity().get();
+        myInfo.batteryLevel = energyStorage->getResidualCapacity().get()
+                / myInfo.batteryCapacity;
     }
     double genPower = 0;
     if (energyGenerator != nullptr) {
         genPower = energyGenerator->getPowerGeneration().get();
     }
-    mInfo.isCharging = !(genPower == 0);
+    myInfo.isCharging = !(genPower == 0);
 
     if (!devInfoOnly) {
-        mInfo.propsedSubnet = getConflictFreeSubnet();
-        mInfo.conflictedSubnets = getPeersConflictedSubnets();
+        if (myInfo.propsedSubnet.compare("-") == 0) {
+            myInfo.propsedSubnet = proposeSubnet();
+        } else if (subnetConflicting()) {
+            myInfo.propsedSubnet = getConflictFreeSubnet();
+        }
+        myInfo.conflictedSubnets = getPeersConflictedSubnets();
 
         if (apNic != nullptr) {
-            mInfo.ssid = apNic->getSubmodule("mgmt")->par("ssid").str();
-            mInfo.key = "";
+            myInfo.ssid = apNic->getSubmodule("mgmt")->par("ssid").str();
+            myInfo.key = "";
         }
     }
 
-    myInfo = mInfo;
+    ASSERT(myInfo.propsedSubnet.compare("-") != 0);
 }
 
 void UDPWFDServiceDiscovery::addDeviceInfoToPayLoad(

@@ -39,7 +39,11 @@ public:
 };
 
 enum ProtocolStates {
-    PROTOCOL_START, DECLARE_GO, SELECT_GO, SET_PROXY_DHCP, PROTOCOL_TEARDOWN
+    PROTOCOL_START = 1000,
+    DECLARE_GO = 1001,
+    SELECT_GO = 1002,
+    SET_PROXY_DHCP = 1003,
+    PROTOCOL_TEARDOWN = 1004
 };
 
 class UDPWFDServiceDiscovery: public UDPBasicApp {
@@ -78,7 +82,7 @@ protected:
     virtual void initialize(int stage) override;
     virtual void finish() override;
     virtual void processStart() override;
-    virtual void handleMessageWhenUp(cMessage *msg) override;
+    virtual void handleMessageWhenUp(cMessage *msg); // override;
     UDPSocket::SendOptions* setDatagramOutInterface();
 
 private:
@@ -115,6 +119,7 @@ private:
             ServiceDiscoveryResponseDeviceInfo* respDevInfo);
     void addOrUpdatePeerSapInfo(int senderModuleId,
             ServiceDiscoveryResponseSapInfo* respSapInfo);
+    void resetDevice();
 };
 
 } /* namespace inet */
