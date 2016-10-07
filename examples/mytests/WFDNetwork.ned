@@ -27,8 +27,10 @@ import inet.visualizer.integrated.IntegratedCanvasVisualizer;
 network WFDNetwork
 {
     int deviceCount = default(3);
-    
+
     @display("bgb=600,600;bgg=100,1,grey95;bgl=3");
+    @figure[title](type=label; pos=0,-1; anchor=sw; color=darkblue);
+
     submodules:
         scenarioManager: ScenarioManager {
             @display("p=68.544,276.19202");

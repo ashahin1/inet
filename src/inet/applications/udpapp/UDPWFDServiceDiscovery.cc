@@ -76,6 +76,7 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
         protocolMsg = new cMessage("Protocol Message");
 
         WATCH(myInfo.propsedSubnet);
+        WATCH(isGroupOwner);
     }
 }
 
@@ -168,6 +169,12 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
     } else {
         UDPBasicApp::handleMessageWhenUp(msg);
     }
+
+    if (hasGUI()) {
+        char buf[80];
+        sprintf(buf, "GO: %d\nrcvd: %d pks\nsent: %d pks\nrcvdReq: %d\nsntReq: %d", isGroupOwner, numReceived, numSent, numRequestRcvd, numRequestSent);
+        getDisplayString().setTagArg("t", 0, buf);
+    }
 }
 
 UDPSocket::SendOptions* UDPWFDServiceDiscovery::setDatagramOutInterface() {
@@ -233,6 +240,7 @@ void UDPWFDServiceDiscovery::addOrUpdatePeerDevInfo(int senderModuleId,
     pInfo.batteryLevel = respDevInfo->getBatteryLevel();
     pInfo.isCharging = respDevInfo->getIsCharging();
     pInfo.propsedSubnet = respDevInfo->getPropsedSubnet();
+    pInfo.conflictedSubnets = respDevInfo->getConflictedSubnets();
     if (peersInfo.count(senderModuleId) > 0) {
         DeviceInfo* pf = &peersInfo[senderModuleId];
         pf->batteryCapacity = pInfo.batteryCapacity;
@@ -269,7 +277,7 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
     if (ServiceDiscoveryRequest *sdReq =
             dynamic_cast<ServiceDiscoveryRequest*>(pk)) {
         //A request is received from a nearby device, so we send a response.
-        updateMyInfo(true); //update myInfo to be used in the next calculation. It also checks for conflicts in subnets
+        updateMyInfo(false); //update myInfo to be used in the next calculation. It also checks for conflicts in subnets
         sendServiceDiscoveryPacket(false, true, sdReq->getOrgSendTime());
         if (isGroupOwner) {
             sendServiceDiscoveryPacket(false, false, sdReq->getOrgSendTime());
@@ -412,7 +420,7 @@ void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
         myInfo.conflictedSubnets = getPeersConflictedSubnets();
 
         if (apNic != nullptr) {
-            myInfo.ssid = apNic->getSubmodule("mgmt")->par("ssid").str();
+            myInfo.ssid = apNic->getSubmodule("mgmt")->par("ssid").stringValue();
             myInfo.key = "";
         }
     }
@@ -428,6 +436,8 @@ void UDPWFDServiceDiscovery::addDeviceInfoToPayLoad(
         payload->setBatteryCapacity(myInfo.batteryCapacity);
         payload->setBatteryLevel(myInfo.batteryLevel);
         payload->setIsCharging(myInfo.isCharging);
+        payload->setPropsedSubnet(myInfo.propsedSubnet.c_str());
+        payload->setConflictedSubnets(myInfo.conflictedSubnets.c_str());
     }
 }
 
