@@ -726,6 +726,8 @@ void DHCPClient::handleParameterChange(const char *parameterName)
             //Restart the app
             if (isOperational) {
                 stopApp();
+                socket.setOutputGate(gate("udpOut"));
+                socket.close();
                 startApp();
             }
         }

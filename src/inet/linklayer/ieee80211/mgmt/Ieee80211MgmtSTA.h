@@ -212,6 +212,7 @@ class INET_API Ieee80211MgmtSTA : public Ieee80211MgmtBase, protected cListener
     virtual void processReassociateCommand(Ieee80211Prim_ReassociateRequest *ctrl);
     virtual void processDisassociateCommand(Ieee80211Prim_DisassociateRequest *ctrl);
     //@}
+    virtual void stop() override;
 };
 
 } // namespace ieee80211

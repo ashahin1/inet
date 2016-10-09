@@ -34,11 +34,12 @@ module WFDHost extends StandardHost
 
     wlan[1].mgmt.encapDecap = default("true");
     wlan[1].mgmt.ssid = default("DIRECT"+string(intuniform(0,9999))+string(intuniform(0,9999)));
-    //wlan[1].mgmt.beaconInterval = default(100ms);
-    wlan[1].radio.channelNumber = default(intuniform(1,13));
+    //wlan[1].mgmt.beaconInterval = default(1s);
+    //wlan[1].radio.channelNumber = default(intuniform(1,13));
+    //wlan[2].radio.channelNumber = default(intuniform(1,13));
 
 	*.agent.default_ssid = default("DIRECT-XXXXXXXX");
-    *.mgmt.numChannels = default(13);
+    //*.mgmt.numChannels = default(13);
     *.clipBoardModule = default(absPath(".clipBoard"));
 
     submodules:

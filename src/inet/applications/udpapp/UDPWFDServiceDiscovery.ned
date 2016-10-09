@@ -38,9 +38,9 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
         double rankBeta = default (0.33);
         double rankGamma = default (0.34);
         double maxBatteryCapacity = default(8000);
-        double declareGoPeriod @unit(s) = default(this.sendInterval * 20);
+        double declareGoPeriod @unit(s) = default(this.sendInterval * 10);
         double selectGoPeriod @unit(s) = default(this.declareGoPeriod);
-        double switchDhcpPeriod @unit(s) = default (this.selectGoPeriod * 5);
+        double switchDhcpPeriod @unit(s) = default (this.selectGoPeriod * 2);
         double tearDownPeriod @unit(s) = default(this.switchDhcpPeriod * 1000);
         
         packetName = default("ServiceDiscovery");

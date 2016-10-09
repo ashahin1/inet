@@ -70,6 +70,11 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
         energyGenerator = dynamic_cast<IEnergyGenerator *>(device->getSubmodule(
                 "energyGenerator"));
 
+        declareGoPeriod = par("declareGoPeriod");
+        selectGoPeriod = par("selectGoPeriod");
+        switchDhcpPeriod = par("switchDhcpPeriod");
+        tearDownPeriod = par("tearDownPeriod");
+
         updateMyInfo(false);
 
         endToEndDelayVec.setName("SrvDsc End-to-End Delay");
@@ -96,7 +101,7 @@ void UDPWFDServiceDiscovery::processStart() {
     //reset every thing
     resetDevice();
     protocolMsg->setKind(DECLARE_GO);
-    scheduleAt(simTime() + par("declareGoPeriod").doubleValue(), protocolMsg);
+    scheduleAt(simTime() + declareGoPeriod, protocolMsg);
 }
 
 void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
@@ -121,8 +126,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             }
 
             protocolMsg->setKind(SELECT_GO);
-            scheduleAt(simTime() + par("selectGoPeriod").doubleValue(),
-                    protocolMsg);
+            scheduleAt(simTime() + selectGoPeriod, protocolMsg);
         } else if (msg->getKind() == SELECT_GO) {
             //start wlan2 and set its target ssid
             //start dhcp client and set its intf to wlan2
@@ -140,8 +144,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             }
 
             protocolMsg->setKind(SET_PROXY_DHCP);
-            scheduleAt(simTime() + par("switchDhcpPeriod").doubleValue(),
-                    protocolMsg);
+            scheduleAt(simTime() + switchDhcpPeriod, protocolMsg);
         } else if (msg->getKind() == SET_PROXY_DHCP) {
             //start wlan3 and set its target ssid
             //switch dhcp client to wlan3 intf
@@ -154,14 +157,12 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             }
 
             protocolMsg->setKind(PROTOCOL_TEARDOWN);
-            scheduleAt(simTime() + par("tearDownPeriod").doubleValue(),
-                    protocolMsg);
+            scheduleAt(simTime() + tearDownPeriod, protocolMsg);
         } else if (msg->getKind() == PROTOCOL_TEARDOWN) {
             resetDevice();
 
             protocolMsg->setKind(DECLARE_GO);
-            scheduleAt(simTime() + par("declareGoPeriod").doubleValue(),
-                    protocolMsg);
+            scheduleAt(simTime() + declareGoPeriod, protocolMsg);
         } else {
             UDPBasicApp::handleMessageWhenUp(msg);
         }
@@ -172,7 +173,10 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
 
     if (hasGUI()) {
         char buf[80];
-        sprintf(buf, "GO: %d\nrcvd: %d pks\nsent: %d pks\nrcvdReq: %d\nsntReq: %d", isGroupOwner, numReceived, numSent, numRequestRcvd, numRequestSent);
+        sprintf(buf,
+                "GO: %d\nrcvd: %d pks\nsent: %d pks\nrcvdReq: %d\nsntReq: %d",
+                isGroupOwner, numReceived, numSent, numRequestRcvd,
+                numRequestSent);
         getDisplayString().setTagArg("t", 0, buf);
     }
 }
@@ -226,8 +230,17 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
 }
 
 void UDPWFDServiceDiscovery::sendPacket() {
-    //Send requests per the defined schedule
+    //If this device is a group owner, then it should not sent any discovery requests.
     if (!isGroupOwner) {
+        //Stop the requests for GMs after the selectingGo phase.
+        //We her check the scheduled message that define the next phase
+        //Once the Go selection is done we schedule the message for Setting the proxy
+        //Of course this means that we need here to check that the message kind is SET_PROXY_DHCP
+        if (protocolMsg != nullptr)
+            if (protocolMsg->getKind() == SET_PROXY_DHCP)
+                return;
+
+        //Send discovery requests per the defined schedule
         sendServiceDiscoveryPacket();
     }
 }
@@ -278,7 +291,9 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
             dynamic_cast<ServiceDiscoveryRequest*>(pk)) {
         //A request is received from a nearby device, so we send a response.
         updateMyInfo(false); //update myInfo to be used in the next calculation. It also checks for conflicts in subnets
-        sendServiceDiscoveryPacket(false, true, sdReq->getOrgSendTime());
+        if (isGroupOwner || (protocolMsg->getKind() == DECLARE_GO)) {
+            sendServiceDiscoveryPacket(false, true, sdReq->getOrgSendTime());
+        }
         if (isGroupOwner) {
             sendServiceDiscoveryPacket(false, false, sdReq->getOrgSendTime());
         }
@@ -420,7 +435,8 @@ void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
         myInfo.conflictedSubnets = getPeersConflictedSubnets();
 
         if (apNic != nullptr) {
-            myInfo.ssid = apNic->getSubmodule("mgmt")->par("ssid").stringValue();
+            myInfo.ssid =
+                    apNic->getSubmodule("mgmt")->par("ssid").stringValue();
             myInfo.key = "";
         }
     }

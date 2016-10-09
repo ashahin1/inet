@@ -58,6 +58,11 @@ protected:
     int numOfTimesOrphaned = 0;
     bool isGroupOwner = false;
 
+    simtime_t declareGoPeriod;
+    simtime_t selectGoPeriod;
+    simtime_t switchDhcpPeriod;
+    simtime_t tearDownPeriod;
+
     EnergyStorageBase *energyStorage = nullptr;
     IEnergyGenerator *energyGenerator = nullptr;
     cModule *dhcpClient = nullptr;

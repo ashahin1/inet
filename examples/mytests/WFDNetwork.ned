@@ -28,7 +28,7 @@ network WFDNetwork
 {
     int deviceCount = default(3);
 
-    @display("bgb=600,600;bgg=100,1,grey95;bgl=3");
+    @display("bgg=100,1,grey95;bgl=3");
     @figure[title](type=label; pos=0,-1; anchor=sw; color=darkblue);
 
     submodules:

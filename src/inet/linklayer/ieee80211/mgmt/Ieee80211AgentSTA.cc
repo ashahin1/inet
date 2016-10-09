@@ -335,6 +335,7 @@ void Ieee80211AgentSTA::handleParameterChange(const char *parameterName)
     if (opp_strlen(parameterName) > 0) {
         if (opp_strcmp(parameterName, "default_ssid") == 0) {
             default_ssid = par("default_ssid").stringValue();
+            sendScanRequest();
         }
     }
 }

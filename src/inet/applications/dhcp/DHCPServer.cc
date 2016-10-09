@@ -346,7 +346,7 @@ void DHCPServer::sendACK(DHCPLease *lease, DHCPMessage *packet)
     if (packet->getGiaddr().isUnspecified() && !packet->getCiaddr().isUnspecified())
         sendToUDP(ack, serverPort, packet->getCiaddr(), clientPort);
     else
-        sendToUDP(ack, serverPort, lease->ip.makeBroadcastAddress(lease->ip.getNetworkMask()), clientPort);
+        sendToUDP(ack, serverPort, lease->ip.makeBroadcastAddress(lease->subnetMask/*lease->ip.getNetworkMask()*/), clientPort);
 }
 
 void DHCPServer::sendOffer(DHCPLease *lease)
@@ -387,7 +387,7 @@ void DHCPServer::sendOffer(DHCPLease *lease)
     // register the offering time // todo: ?
     lease->leaseTime = simTime();
 
-    sendToUDP(offer, serverPort, lease->ip.makeBroadcastAddress(lease->ip.getNetworkMask()), clientPort);
+    sendToUDP(offer, serverPort, lease->ip.makeBroadcastAddress(lease->subnetMask/*lease->ip.getNetworkMask()*/), clientPort);
 }
 
 DHCPLease *DHCPServer::getLeaseByMac(MACAddress mac)
