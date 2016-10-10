@@ -173,11 +173,12 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
 
     if (hasGUI()) {
         char buf[80];
-        sprintf(buf,
-                "GO: %d\nrcvd: %d pks\nsent: %d pks\nrcvdReq: %d\nsntReq: %d",
-                isGroupOwner, numReceived, numSent, numRequestRcvd,
-                numRequestSent);
+        sprintf(buf, "rcvd: %d pks\nsent: %d pks\nrcvdReq: %d\nsntReq: %d",
+                numReceived, numSent, numRequestRcvd, numRequestSent);
         getDisplayString().setTagArg("t", 0, buf);
+
+        getContainingNode(this)->getDisplayString().setTagArg("t", 0,
+                (isGroupOwner ? "GO" : "GM"));
     }
 }
 
