@@ -50,5 +50,7 @@ network WFDNetwork
         figureHelper: DelegateSignalConfigurator {
             @display("p=68.544,169.34401");
         }
-        device[deviceCount]: WFDHost;
+        device[deviceCount]: WFDHost{
+            //@display("p=100,100;r=,,#000040");
+        }
 }

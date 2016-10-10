@@ -33,7 +33,7 @@ network Test3
         @figure[rcvdPkText](type=indicatorText; pos=420,20; anchor=w; font=,20; textFormat="packets received: %g"; initialValue=0);
         @statistic[rcvdPk](source=hostB_rcvdPk; record=figure(count); targetFigure=rcvdPkText);
         @signal[hostB_rcvdPk];
-        @delegatesignal[rcvdPk](source=hostB.udpApp[0].rcvdPk; target=hostB_rcvdPk);
+        //@delegatesignal[rcvdPk](source=hostB.udpApp[0].rcvdPk; target=hostB_rcvdPk);
 
     submodules:
         visualizer: IntegratedCanvasVisualizer {
@@ -55,6 +55,6 @@ network Test3
             @display("p=159.264,341.712");
         }
         hostC: <hostType> like INetworkNode {
-            @display("p=119.952,191.52");
+            @display("p=119.952,255.024");
         }
 }
