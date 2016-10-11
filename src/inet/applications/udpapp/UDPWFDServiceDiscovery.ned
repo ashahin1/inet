@@ -29,6 +29,7 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
         string proxyInterface = default("wlan3"); //The interface for proxy connection to the other group
         string dhcpClientAppName = default(".udpApp[1]");
         string dhcpServerAppName = default(".udpApp[2]");
+        string tcpMgmtClientAppName = default("tcpApp[1]");
         string ApNicName = default(".wlan[1]");
         string p2pNicName = default(".wlan[2]");
         string proxyNicName = default(".wlan[3]");

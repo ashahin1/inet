@@ -20,4 +20,11 @@ package inet.applications.tcpapp;
 //
 simple TCPMgmtSrvApp extends TCPGenericSrvApp
 {
+    string interfaceTableModule;   // The path to the InterfaceTable module
+    string clipBoardModule = default("");
+    string ipInterface = default("wlan1");
+    string sdNicName = default(".wlan[0]");
+    int hb_ttl = default(30);
+    double decTtlPeriod @unit(s) = default(1s);
+    @class(TCPMgmtSrvApp);
 }

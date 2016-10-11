@@ -16,19 +16,39 @@
 #ifndef INET_APPLICATIONS_TCPAPP_TCPMGMTCLIENTAPP_H_
 #define INET_APPLICATIONS_TCPAPP_TCPMGMTCLIENTAPP_H_
 
+#include "inet/networklayer/ipv4/IPv4InterfaceData.h"
+#include "inet/applications/common/ClipBoard.h"
 #include "inet/applications/tcpapp/TCPBasicClientApp.h"
-
-#include <vector>
-#include "HeartBeatRecord.h"
-
-typedef std::vector<inet::HeartBeatRecord> HeartBeat;
 
 namespace inet {
 
 class TCPMgmtClientApp: public TCPBasicClientApp {
+protected:
+    ClipBoard *clpBrd = nullptr;
+    IInterfaceTable *ift = nullptr;
+    cModule *sdNic = nullptr;
+
+    cMessage *ttlMsg = nullptr;
+
+    HeartBeatMap heartBeatMap;
+    HeartBeatRecord myHeartBeatRecord;
 public:
     TCPMgmtClientApp();
     virtual ~TCPMgmtClientApp();
+
+protected:
+    virtual void initialize(int stage) override;
+    virtual bool handleOperationStage(LifecycleOperation *operation, int stage,
+            IDoneCallback *doneCallback) override;
+    virtual void handleMessage(cMessage *msg) override;
+    virtual void handleTimer(cMessage *msg) override;
+    virtual void sendPacket(cPacket *msg) override;
+    virtual void socketDataArrived(int connId, void *ptr, cPacket *msg, bool urgent) override;
+
+private:
+    void initMyHeartBeatRecord();
+    void decreasePeersTtl();
+    void removeZeroTtl();
 };
 
 } /* namespace inet */

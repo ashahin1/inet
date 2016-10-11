@@ -15,14 +15,15 @@
 
 cplusplus {{
     #include <vector>
-    #include "HeartBeatRecord.h"
+    #include <map>
+    #include "inet/applications/common/HeartBeatRecord.h"
 	#include "GenericAppMsg_m.h"
-	typedef std::vector<inet::HeartBeatRecord> HeartBeat;
+	typedef std::map<int, inet::HeartBeatRecord> HeartBeatMap;
 }}
 
 namespace inet;
 struct HeartBeatRecord;
-class noncobject HeartBeat;
+class noncobject HeartBeatMap;
 packet GenericAppMsg;
 
 
@@ -30,5 +31,6 @@ packet GenericAppMsg;
 // TODO generated message class
 //
 packet HeartBeatMsg extends GenericAppMsg {
-	HeartBeat heartBeatVector;
+	HeartBeatMap heartBeatMap;
+	bool replayNow = false;
 }

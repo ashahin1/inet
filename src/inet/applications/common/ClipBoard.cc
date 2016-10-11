@@ -21,20 +21,28 @@ Define_Module(ClipBoard);
 
 ClipBoard::ClipBoard() {
     // TODO Auto-generated constructor stub
-    numOfHits = 0;
+    heartBeatMap = nullptr;
 }
 
 ClipBoard::~ClipBoard() {
     // TODO Auto-generated destructor stub
 }
 
-int ClipBoard::getNumOfHits() {
-    return numOfHits;
+HeartBeatMap* ClipBoard::getHeartBeatMap() {
+    return heartBeatMap;
 }
 
-void ClipBoard::setNumOfHits(int numOfHits) {
-    this->numOfHits = numOfHits;
-    EV_INFO << "ClipBoard No of Hit = " << this->numOfHits;
+void ClipBoard::setHeartBeatMap(HeartBeatMap* heartBeatMap) {
+    this->heartBeatMap = heartBeatMap;
+}
+
+DevicesInfo* ClipBoard::getPeersInfo() {
+    return peersInfo;
+}
+
+void ClipBoard::setPeersInfo(DevicesInfo* peersInfo) {
+    this->peersInfo = peersInfo;
 }
 
 } /* namespace inet */
+

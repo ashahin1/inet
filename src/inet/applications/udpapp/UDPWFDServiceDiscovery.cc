@@ -55,6 +55,9 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
 
     if (stage == INITSTAGE_LOCAL) {
         clpBrd = getModuleFromPar<ClipBoard>(par("clipBoardModule"), this);
+        if (clpBrd != nullptr) {
+            clpBrd->setPeersInfo(&this->peersInfo);
+        }
         lifeCycleCtrl = getModuleFromPar<LifecycleController>(
                 par("lifeCycleControllerModule"), this);
         cModule *device = getContainingNode(this);
@@ -62,9 +65,15 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
                 par("dhcpClientAppName").stringValue());
         dhcpServer = device->getModuleByPath(
                 par("dhcpServerAppName").stringValue());
+        tcpMgmtClientApp = device->getModuleByPath(
+                par("tcpMgmtClientAppName").stringValue());
         apNic = device->getModuleByPath(par("ApNicName").stringValue());
         p2pNic = device->getModuleByPath(par("p2pNicName").stringValue());
         proxyNic = device->getModuleByPath(par("proxyNicName").stringValue());
+
+        ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"),
+                this);
+
         energyStorage = dynamic_cast<EnergyStorageBase *>(device->getSubmodule(
                 "energyStorage"));
         energyGenerator = dynamic_cast<IEnergyGenerator *>(device->getSubmodule(
@@ -79,6 +88,8 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
 
         endToEndDelayVec.setName("SrvDsc End-to-End Delay");
         protocolMsg = new cMessage("Protocol Message");
+        clpBrd->protocolMsg = protocolMsg;
+        clpBrd->isGroupOwner = &isGroupOwner;
 
         WATCH(myInfo.propsedSubnet);
         WATCH(isGroupOwner);
@@ -137,6 +148,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                     turnP2pInterfaceOn();
                     switchDhcpClientToGroup();
                     turnDhcpClientOn();
+                    turnTcpMgmtClientAppOn();
                 } else {
                     EV_INFO << "Orphaned Device Found";
                     numOfTimesOrphaned++;
@@ -185,8 +197,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
 UDPSocket::SendOptions* UDPWFDServiceDiscovery::setDatagramOutInterface() {
     //Set the output interface for the datagram to let the broadcast to pass
     UDPSocket::SendOptions* sndOpt = new UDPSocket::SendOptions();
-    IInterfaceTable *ift = nullptr;
-    ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
+
     const InterfaceEntry* destIE =
             const_cast<const InterfaceEntry*>(ift->getInterfaceByName(
                     par("interface")));
@@ -328,6 +339,7 @@ void UDPWFDServiceDiscovery::turnModulesOff() {
     if (lifeCycleCtrl != nullptr) {
         lifeCycleCtrl->processDirectCommand(dhcpClient, false);
         lifeCycleCtrl->processDirectCommand(dhcpServer, false);
+        lifeCycleCtrl->processDirectCommand(tcpMgmtClientApp, false);
         lifeCycleCtrl->processDirectCommand(apNic, false);
         lifeCycleCtrl->processDirectCommand(p2pNic, false);
         lifeCycleCtrl->processDirectCommand(proxyNic, false);
@@ -342,6 +354,19 @@ void UDPWFDServiceDiscovery::turnDhcpClientOn() {
 
 void UDPWFDServiceDiscovery::turnDhcpServerOn() {
     lifeCycleCtrl->processDirectCommand(dhcpServer, true);
+}
+
+void UDPWFDServiceDiscovery::turnTcpMgmtClientAppOn() {
+    //first change the connection target to be the default gateway
+    if (tcpMgmtClientApp != nullptr) {
+        const InterfaceEntry* ie =
+                const_cast<const InterfaceEntry*>(ift->getInterfaceByName(
+                        par("groupInterface")));
+        //TODO: Correct This to get the actual gateway address
+        string gatewayIP = "";
+        tcpMgmtClientApp->par("connectAddress").setStringValue(gatewayIP);
+    }
+    lifeCycleCtrl->processDirectCommand(tcpMgmtClientApp, true);
 }
 
 void UDPWFDServiceDiscovery::turnApInterfaceOn() {

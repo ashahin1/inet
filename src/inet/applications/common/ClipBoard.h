@@ -17,16 +17,48 @@
 #define INET_APPLICATIONS_COMMON_CLIPBOARD_H_
 
 #include <omnetpp/csimplemodule.h>
+#include <vector>
+
+#include "inet/applications/tcpapp/HeartBeatMsg_m.h"
 
 namespace inet {
 
+enum ProtocolStates {
+    PROTOCOL_START = 1000,
+    DECLARE_GO = 1001,
+    SELECT_GO = 1002,
+    SET_PROXY_DHCP = 1003,
+    PROTOCOL_TEARDOWN = 1004
+};
+
+static const int TTL_MSG = 9999;
+
+struct DeviceInfo {
+public:
+    double batteryCapacity = -1.0f;
+    double batteryLevel = -1;
+    bool isCharging = false;
+    string propsedSubnet = "-";
+    string conflictedSubnets = "";
+    string ssid = "";
+    string key = "";
+};
+typedef std::map<int, DeviceInfo> DevicesInfo;
+
 class ClipBoard: public omnetpp::cSimpleModule {
-    int numOfHits;
+public:
+    cMessage *protocolMsg;
+    bool *isGroupOwner;
+protected:
+    HeartBeatMap *heartBeatMap;
+    DevicesInfo *peersInfo;
 public:
     ClipBoard();
     virtual ~ClipBoard();
-    int getNumOfHits();
-    void setNumOfHits(int numOfHits);
+    HeartBeatMap *getHeartBeatMap();
+    void setHeartBeatMap(HeartBeatMap *heartBeatMap);
+    DevicesInfo *getPeersInfo();
+    void setPeersInfo(DevicesInfo* peersInfo);
 };
 
 } /* namespace inet */

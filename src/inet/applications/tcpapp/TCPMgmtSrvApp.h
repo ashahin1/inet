@@ -16,19 +16,35 @@
 #ifndef INET_APPLICATIONS_TCPAPP_TCPMGMTSRVAPP_H_
 #define INET_APPLICATIONS_TCPAPP_TCPMGMTSRVAPP_H_
 
+#include "inet/networklayer/ipv4/IPv4InterfaceData.h"
+#include "inet/applications/common/ClipBoard.h"
 #include "inet/applications/tcpapp/TCPGenericSrvApp.h"
-
-#include <vector>
-#include "HeartBeatRecord.h"
-
-typedef std::vector<inet::HeartBeatRecord> HeartBeat;
 
 namespace inet {
 
 class TCPMgmtSrvApp: public TCPGenericSrvApp {
+protected:
+    ClipBoard *clpBrd = nullptr;
+    IInterfaceTable *ift = nullptr;
+    cModule *sdNic = nullptr;
+
+    cMessage *ttlMsg = nullptr;
+
+    HeartBeatMap heartBeatMap;
+    HeartBeatRecord myHeartBeatRecord;
 public:
     TCPMgmtSrvApp();
     virtual ~TCPMgmtSrvApp();
+protected:
+    virtual void initialize(int stage) override;
+    virtual void sendBack(cMessage *msg) override;
+    virtual void sendOrSchedule(cMessage *msg, simtime_t delay) override;
+    virtual void handleMessage(cMessage *msg) override;
+
+private:
+    void initMyHeartBeatRecord();
+    void decreasePeersTtl();
+    void removeZeroTtl();
 };
 
 } /* namespace inet */

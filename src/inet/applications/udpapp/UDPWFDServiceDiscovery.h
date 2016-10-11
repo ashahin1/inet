@@ -27,25 +27,6 @@ namespace inet {
 using namespace inet::power;
 using namespace std;
 
-struct DeviceInfo {
-public:
-    double batteryCapacity = -1.0f;
-    double batteryLevel = -1;
-    bool isCharging = false;
-    string propsedSubnet = "-";
-    string conflictedSubnets = "";
-    string ssid = "";
-    string key = "";
-};
-
-enum ProtocolStates {
-    PROTOCOL_START = 1000,
-    DECLARE_GO = 1001,
-    SELECT_GO = 1002,
-    SET_PROXY_DHCP = 1003,
-    PROTOCOL_TEARDOWN = 1004
-};
-
 class UDPWFDServiceDiscovery: public UDPBasicApp {
 protected:
     ClipBoard *clpBrd = nullptr;
@@ -63,10 +44,12 @@ protected:
     simtime_t switchDhcpPeriod;
     simtime_t tearDownPeriod;
 
+    IInterfaceTable *ift = nullptr;
     EnergyStorageBase *energyStorage = nullptr;
     IEnergyGenerator *energyGenerator = nullptr;
     cModule *dhcpClient = nullptr;
     cModule *dhcpServer = nullptr;
+    cModule *tcpMgmtClientApp = nullptr;
     cModule *apNic = nullptr;
     cModule *p2pNic = nullptr;
     cModule *proxyNic = nullptr;
@@ -75,7 +58,7 @@ protected:
 
     cOutVector endToEndDelayVec;
 
-    map<int, DeviceInfo> peersInfo;
+    DevicesInfo peersInfo;
     DeviceInfo myInfo;
 public:
     UDPWFDServiceDiscovery();
@@ -94,6 +77,7 @@ private:
     void turnModulesOff();
     void turnDhcpClientOn();
     void turnDhcpServerOn();
+    void turnTcpMgmtClientAppOn();
     void turnApInterfaceOn();
     void turnP2pInterfaceOn();
     void turnProxyInterfaceOn();

@@ -20,5 +20,17 @@ package inet.applications.tcpapp;
 //
 simple TCPMgmtClientApp extends TCPBasicClientApp
 {
+    string interfaceTableModule;   // The path to the InterfaceTable module
+    string clipBoardModule = default("");
+    string ipInterface = default("wlan2");
+    string sdNicName = default(".wlan[0]");
+    int hb_ttl = default(30);
+    double decTtlPeriod @unit(s) = default(1s);
+
+    thinkTime = default(1s);
+    idleInterval = default(1s);
+    numRequestsPerSession = default(5);
+    dataTransferMode = default("object");
+    startTime = default(10s);
     @class(TCPMgmtClientApp);
 }
