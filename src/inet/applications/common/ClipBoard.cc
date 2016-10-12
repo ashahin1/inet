@@ -21,11 +21,21 @@ Define_Module(ClipBoard);
 
 ClipBoard::ClipBoard() {
     // TODO Auto-generated constructor stub
+    protocolMsg = nullptr;
+    isGroupOwner = nullptr;
     heartBeatMap = nullptr;
+    peersInfo = nullptr;
 }
 
 ClipBoard::~ClipBoard() {
     // TODO Auto-generated destructor stub
+}
+
+void ClipBoard::initialize(int stage) {
+    WATCH(heartBeatMap);
+    WATCH(peersInfo);
+    WATCH(protocolMsg);
+    WATCH(*isGroupOwner);
 }
 
 HeartBeatMap* ClipBoard::getHeartBeatMap() {
@@ -42,6 +52,13 @@ DevicesInfo* ClipBoard::getPeersInfo() {
 
 void ClipBoard::setPeersInfo(DevicesInfo* peersInfo) {
     this->peersInfo = peersInfo;
+}
+
+void ClipBoard::refreshDisplay() const {
+    // refresh statistics
+    char buf[32];
+    sprintf(buf, "HBs:%d  PIs:%d", heartBeatMap->size(), peersInfo->size());
+    getDisplayString().setTagArg("t", 0, buf);
 }
 
 } /* namespace inet */

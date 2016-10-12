@@ -97,7 +97,7 @@ void TCPMgmtSrvApp::sendOrSchedule(cMessage* msg, simtime_t delay) {
             }
         }
         //The client should tell us whether its time to send a reply or not
-        if(!hbPeerMsg->getReplayNow()){
+        if (!hbPeerMsg->getReplayNow()) {
             delete msg;
             return;
         }
@@ -112,13 +112,20 @@ void TCPMgmtSrvApp::sendBack(cMessage* msg) {
     //Modify the msg by adding the current GO map instead of the GM map
     if (hbPeerMsg != nullptr) {
         hbPeerMsg->setHeartBeatMap(heartBeatMap);
+        uint msgByteLen = (sizeof(int) + sizeof(HeartBeatRecord))
+                * heartBeatMap.size();
+        hbPeerMsg->setByteLength(msgByteLen);
+
+        TCPGenericSrvApp::sendBack(hbPeerMsg);
+    } else {
+        TCPGenericSrvApp::sendBack(msg);
     }
-    TCPGenericSrvApp::sendBack(msg);
+
 }
 
 void TCPMgmtSrvApp::initMyHeartBeatRecord() {
     if (sdNic != nullptr) {
-        int devID = sdNic->getSubmodule("radio")->getId();
+        int devID = sdNic->getId();
         myHeartBeatRecord.devId = devID;
     }
 

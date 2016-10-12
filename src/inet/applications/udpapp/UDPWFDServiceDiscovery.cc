@@ -26,6 +26,7 @@
 namespace inet {
 
 using namespace units::values;
+using namespace ieee80211;
 
 Define_Module(UDPWFDServiceDiscovery);
 
@@ -60,14 +61,16 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
         }
         lifeCycleCtrl = getModuleFromPar<LifecycleController>(
                 par("lifeCycleControllerModule"), this);
-        cModule *device = getContainingNode(this);
+        device = getContainingNode(this);
         dhcpClient = device->getModuleByPath(
                 par("dhcpClientAppName").stringValue());
         dhcpServer = device->getModuleByPath(
                 par("dhcpServerAppName").stringValue());
         tcpMgmtClientApp = device->getModuleByPath(
                 par("tcpMgmtClientAppName").stringValue());
+        sdNic = device->getModuleByPath(par("sdNicName").stringValue());
         apNic = device->getModuleByPath(par("ApNicName").stringValue());
+        apMgmt = dynamic_cast<Ieee80211MgmtAP *>(apNic->getSubmodule("mgmt"));
         p2pNic = device->getModuleByPath(par("p2pNicName").stringValue());
         proxyNic = device->getModuleByPath(par("proxyNicName").stringValue());
 
@@ -96,9 +99,35 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
     }
 }
 
+void UDPWFDServiceDiscovery::refreshDisplay() const {
+    char buf[80];
+    sprintf(buf,
+            "rcvd: %d sent: %d\nrcvdReq: %d sntReq: %d\nrcvdRes: %d sntRes: %d",
+            numReceived, numSent, numRequestRcvd, numRequestSent,
+            numResponseRcvd, numResponseSent);
+    getDisplayString().setTagArg("t", 0, buf);
+
+    char buf2[80];
+    if (isGroupOwner) {
+        int numGMs = apMgmt->getNumOfStation();
+        sprintf(buf2, "GO (%d)", numGMs);
+    } else {
+        if (isOrphaned) {
+            sprintf(buf2, "Orph");
+        } else if (isGroupMember) {
+            sprintf(buf2, "GM");
+        } else {
+            sprintf(buf2, "??");
+        }
+    }
+    device->getDisplayString().setTagArg("t", 0, buf2);
+}
+
 void UDPWFDServiceDiscovery::resetDevice() {
     //reset every thing
     isGroupOwner = false;
+    isOrphaned = false;
+    isGroupMember = false;
     peersInfo.clear();
     //myInfo = DeviceInfo();
     updateMyInfo(false);
@@ -144,6 +173,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             if (!isGroupOwner) {
                 DeviceInfo *bestGo = getBestRankGO();
                 if (bestGo != nullptr) {
+                    isGroupMember = true;
                     changeP2pSSID(bestGo->ssid.c_str());
                     turnP2pInterfaceOn();
                     switchDhcpClientToGroup();
@@ -151,6 +181,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                     turnTcpMgmtClientAppOn();
                 } else {
                     EV_INFO << "Orphaned Device Found";
+                    isOrphaned = true;
                     numOfTimesOrphaned++;
                 }
             }
@@ -181,16 +212,6 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
 
     } else {
         UDPBasicApp::handleMessageWhenUp(msg);
-    }
-
-    if (hasGUI()) {
-        char buf[80];
-        sprintf(buf, "rcvd: %d pks\nsent: %d pks\nrcvdReq: %d\nsntReq: %d",
-                numReceived, numSent, numRequestRcvd, numRequestSent);
-        getDisplayString().setTagArg("t", 0, buf);
-
-        getContainingNode(this)->getDisplayString().setTagArg("t", 0,
-                (isGroupOwner ? "GO" : "GM"));
     }
 }
 
@@ -230,6 +251,11 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
         }
         numResponseSent++;
     }
+
+    //Declare that the sender is the service discovery card
+    int sId = sdNic->getId();
+    payload->setSenderId(sId);
+
     payload->setByteLength(par("messageLength").longValue());
     payload->setSequenceNumber(numSent);
 
@@ -257,7 +283,7 @@ void UDPWFDServiceDiscovery::sendPacket() {
     }
 }
 
-void UDPWFDServiceDiscovery::addOrUpdatePeerDevInfo(int senderModuleId,
+void UDPWFDServiceDiscovery::addOrUpdatePeerDevInfo(int senderId,
         ServiceDiscoveryResponseDeviceInfo* respDevInfo) {
 
     DeviceInfo pInfo;
@@ -266,29 +292,29 @@ void UDPWFDServiceDiscovery::addOrUpdatePeerDevInfo(int senderModuleId,
     pInfo.isCharging = respDevInfo->getIsCharging();
     pInfo.propsedSubnet = respDevInfo->getPropsedSubnet();
     pInfo.conflictedSubnets = respDevInfo->getConflictedSubnets();
-    if (peersInfo.count(senderModuleId) > 0) {
-        DeviceInfo* pf = &peersInfo[senderModuleId];
+    if (peersInfo.count(senderId) > 0) {
+        DeviceInfo* pf = &peersInfo[senderId];
         pf->batteryCapacity = pInfo.batteryCapacity;
         pf->batteryLevel = pInfo.batteryLevel;
         pf->isCharging = pInfo.isCharging;
         pf->propsedSubnet = pInfo.propsedSubnet;
     } else {
-        peersInfo[senderModuleId] = pInfo;
+        peersInfo[senderId] = pInfo;
     }
 }
 
-void UDPWFDServiceDiscovery::addOrUpdatePeerSapInfo(int senderModuleId,
+void UDPWFDServiceDiscovery::addOrUpdatePeerSapInfo(int senderId,
         ServiceDiscoveryResponseSapInfo* respSapInfo) {
 
     DeviceInfo pInfo;
     pInfo.ssid = respSapInfo->getSsid();
     pInfo.key = respSapInfo->getKey();
-    if (peersInfo.count(senderModuleId) > 0) {
-        DeviceInfo* pf = &peersInfo[senderModuleId];
+    if (peersInfo.count(senderId) > 0) {
+        DeviceInfo* pf = &peersInfo[senderId];
         pf->ssid = pInfo.ssid;
         pf->key = pInfo.key;
     } else {
-        peersInfo[senderModuleId] = pInfo;
+        peersInfo[senderId] = pInfo;
     }
 }
 
@@ -297,7 +323,12 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
     EV_INFO << "Received packet: " << UDPSocket::getReceivedPacketInfo(pk)
                    << endl;
 
-    int senderModuleId = pk->getSenderModuleId();
+    int senderId = 0;
+
+    if (ServiceDiscoveryPacket *sdPk =
+            dynamic_cast<ServiceDiscoveryPacket *>(pk)) {
+        senderId = sdPk->getSenderId();
+    }
 
     if (ServiceDiscoveryRequest *sdReq =
             dynamic_cast<ServiceDiscoveryRequest*>(pk)) {
@@ -315,14 +346,14 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
         if (ServiceDiscoveryResponseDeviceInfo *respDevInfo =
                 dynamic_cast<ServiceDiscoveryResponseDeviceInfo *>(pk)) {
 
-            addOrUpdatePeerDevInfo(senderModuleId, respDevInfo);
+            addOrUpdatePeerDevInfo(senderId, respDevInfo);
 
             updateMyInfo(false);
             eed = simTime() - respDevInfo->getOrgSendTime();
         } else if (ServiceDiscoveryResponseSapInfo *respSapInfo =
                 dynamic_cast<ServiceDiscoveryResponseSapInfo *>(pk)) {
 
-            addOrUpdatePeerSapInfo(senderModuleId, respSapInfo);
+            addOrUpdatePeerSapInfo(senderId, respSapInfo);
             eed = simTime() - respSapInfo->getOrgSendTime();
         }
 
@@ -357,15 +388,6 @@ void UDPWFDServiceDiscovery::turnDhcpServerOn() {
 }
 
 void UDPWFDServiceDiscovery::turnTcpMgmtClientAppOn() {
-    //first change the connection target to be the default gateway
-    if (tcpMgmtClientApp != nullptr) {
-        const InterfaceEntry* ie =
-                const_cast<const InterfaceEntry*>(ift->getInterfaceByName(
-                        par("groupInterface")));
-        //TODO: Correct This to get the actual gateway address
-        string gatewayIP = "";
-        tcpMgmtClientApp->par("connectAddress").setStringValue(gatewayIP);
-    }
     lifeCycleCtrl->processDirectCommand(tcpMgmtClientApp, true);
 }
 

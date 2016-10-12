@@ -27,6 +27,7 @@ packet ApplicationPacket;
 
 packet ServiceDiscoveryPacket extends ApplicationPacket {
     simtime_t orgSendTime;
+    int senderId;
 }
 packet ServiceDiscoveryRequest extends ServiceDiscoveryPacket {    
 }

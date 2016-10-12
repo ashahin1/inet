@@ -59,6 +59,9 @@ public:
     void setHeartBeatMap(HeartBeatMap *heartBeatMap);
     DevicesInfo *getPeersInfo();
     void setPeersInfo(DevicesInfo* peersInfo);
+protected:
+    virtual void initialize(int stage) override;
+    virtual void refreshDisplay() const override;
 };
 
 } /* namespace inet */

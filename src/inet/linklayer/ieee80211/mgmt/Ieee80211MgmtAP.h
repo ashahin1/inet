@@ -83,6 +83,7 @@ class INET_API Ieee80211MgmtAP : public Ieee80211MgmtAPBase, protected cListener
   public:
     Ieee80211MgmtAP() {}
     virtual ~Ieee80211MgmtAP();
+    int getNumOfStation ();
 
   protected:
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }

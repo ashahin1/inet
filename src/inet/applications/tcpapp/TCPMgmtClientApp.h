@@ -24,6 +24,8 @@ namespace inet {
 
 class TCPMgmtClientApp: public TCPBasicClientApp {
 protected:
+    string status = "";
+
     ClipBoard *clpBrd = nullptr;
     IInterfaceTable *ift = nullptr;
     cModule *sdNic = nullptr;
@@ -42,13 +44,17 @@ protected:
             IDoneCallback *doneCallback) override;
     virtual void handleMessage(cMessage *msg) override;
     virtual void handleTimer(cMessage *msg) override;
-    virtual void sendPacket(cPacket *msg) override;
-    virtual void socketDataArrived(int connId, void *ptr, cPacket *msg, bool urgent) override;
+    virtual void sendRequest() override;
+    virtual void socketDataArrived(int connId, void *ptr, cPacket *msg,
+            bool urgent) override;
+    virtual void refreshDisplay() const override;
+    virtual void setStatusString(const char *s) override;
 
 private:
     void initMyHeartBeatRecord();
     void decreasePeersTtl();
     void removeZeroTtl();
+    void setConnectAddressToGoIP();
 };
 
 } /* namespace inet */

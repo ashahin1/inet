@@ -16,6 +16,7 @@
 #ifndef INET_APPLICATIONS_UDPAPP_UDPWFDSERVICEDISCOVERY_H_
 #define INET_APPLICATIONS_UDPAPP_UDPWFDSERVICEDISCOVERY_H_
 
+#include "inet/linklayer/ieee80211/mgmt/Ieee80211MgmtAP.h"
 #include "inet/applications/udpapp/UDPBasicApp.h"
 #include "inet/applications/common/ClipBoard.h"
 #include "inet/applications/udpapp/ServiceDiscoveryPacket_m.h"
@@ -26,6 +27,7 @@ namespace inet {
 
 using namespace inet::power;
 using namespace std;
+using namespace ieee80211;
 
 class UDPWFDServiceDiscovery: public UDPBasicApp {
 protected:
@@ -38,6 +40,8 @@ protected:
     int numIpConflicts = 0;
     int numOfTimesOrphaned = 0;
     bool isGroupOwner = false;
+    bool isOrphaned = false;
+    bool isGroupMember = false;
 
     simtime_t declareGoPeriod;
     simtime_t selectGoPeriod;
@@ -47,12 +51,17 @@ protected:
     IInterfaceTable *ift = nullptr;
     EnergyStorageBase *energyStorage = nullptr;
     IEnergyGenerator *energyGenerator = nullptr;
+
+    cModule *device = nullptr;
     cModule *dhcpClient = nullptr;
     cModule *dhcpServer = nullptr;
     cModule *tcpMgmtClientApp = nullptr;
+    cModule *sdNic = nullptr;
     cModule *apNic = nullptr;
     cModule *p2pNic = nullptr;
     cModule *proxyNic = nullptr;
+
+    Ieee80211MgmtAP *apMgmt = nullptr;
 
     cMessage *protocolMsg = nullptr;
 
@@ -72,6 +81,7 @@ protected:
     virtual void processStart() override;
     virtual void handleMessageWhenUp(cMessage *msg); // override;
     UDPSocket::SendOptions* setDatagramOutInterface();
+    virtual void refreshDisplay() const override;
 
 private:
     void turnModulesOff();

@@ -414,6 +414,10 @@ void Ieee80211MgmtAP::sendDisAssocNotification(const MACAddress& addr)
     emit(NF_L2_AP_DISASSOCIATED, &notif);
 }
 
+int Ieee80211MgmtAP::getNumOfStation() {
+    return staList.size();
+}
+
 void Ieee80211MgmtAP::start()
 {
     Ieee80211MgmtAPBase::start();

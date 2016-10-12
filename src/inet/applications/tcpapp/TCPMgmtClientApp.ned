@@ -32,5 +32,6 @@ simple TCPMgmtClientApp extends TCPBasicClientApp
     numRequestsPerSession = default(5);
     dataTransferMode = default("object");
     startTime = default(10s);
+    reconnectInterval = default(1s);
     @class(TCPMgmtClientApp);
 }

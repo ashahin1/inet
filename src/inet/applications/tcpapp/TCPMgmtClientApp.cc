@@ -53,6 +53,8 @@ void TCPMgmtClientApp::initialize(int stage) {
 
         cModule *device = getContainingNode(this);
         sdNic = device->getModuleByPath(par("sdNicName").stringValue());
+
+        WATCH(myHeartBeatRecord.ipAddress);
     }
 }
 
@@ -67,6 +69,7 @@ bool TCPMgmtClientApp::handleOperationStage(LifecycleOperation *operation,
                 timeoutMsg->setKind(MSGKIND_CONNECT);
                 scheduleAt(start, timeoutMsg);
 
+                myHeartBeatRecord = HeartBeatRecord();
                 initMyHeartBeatRecord();
                 heartBeatMap.clear();
 
@@ -103,8 +106,46 @@ void TCPMgmtClientApp::handleMessage(cMessage* msg) {
     }
 }
 
+void TCPMgmtClientApp::refreshDisplay() const {
+    char buf[80];
+    sprintf(buf, "%s\nrcvd: %ld pks %ld bytes\nsent: %ld pks %ld bytes",
+            status.c_str(), packetsRcvd, bytesRcvd, packetsSent, bytesSent);
+    getDisplayString().setTagArg("t", 0, buf);
+}
+
+void TCPMgmtClientApp::setStatusString(const char* s) {
+    status = s;
+}
+
+void TCPMgmtClientApp::setConnectAddressToGoIP() {
+    //change the connection target to be the default gateway (GO)
+    const InterfaceEntry* ie =
+            const_cast<const InterfaceEntry*>(ift->getInterfaceByName(
+                    par("ipInterface")));
+    uint myIpInt = ie->ipv4Data()->getIPAddress().getInt();
+    //From this GM IP we can get the GO IP.
+    //As it differs only in the first octet.
+    //Which should be 1 for the GO.
+    uint GoIpInt = (myIpInt & 0xFFFFFF00) | 0x00000001;
+    IPv4Address GoIp(GoIpInt);
+    par("connectAddress").setStringValue(GoIp.str());
+}
+
 void TCPMgmtClientApp::handleTimer(cMessage* msg) {
-    if (msg->getKind() == MSGKIND_SEND) {
+    if (msg->getKind() == MSGKIND_CONNECT) {
+        initMyHeartBeatRecord();
+        //Check if my ip address is already assigned by the DHCP or not.
+        if (myHeartBeatRecord.ipAddress.compare("") == 0) {
+            //schedule the connection for another time
+            simtime_t d = simTime() + (simtime_t) par("idleInterval");
+            rescheduleOrDeleteTimer(d, MSGKIND_CONNECT);
+            return;
+        } else {
+            setConnectAddressToGoIP();
+        }
+
+        TCPBasicClientApp::handleTimer(msg);
+    } else if (msg->getKind() == MSGKIND_SEND) {
         sendRequest();
         numRequestsToSend--;
 
@@ -112,35 +153,51 @@ void TCPMgmtClientApp::handleTimer(cMessage* msg) {
         rescheduleOrDeleteTimer(d, MSGKIND_SEND);
 
     } else {
-        TCPMgmtClientApp::handleTimer(msg);
+        TCPBasicClientApp::handleTimer(msg);
     }
 
 }
 
-void TCPMgmtClientApp::sendPacket(cPacket* msg) {
-    HeartBeatMsg *hbMsg = dynamic_cast<HeartBeatMsg *>(msg);
+void TCPMgmtClientApp::sendRequest() {
+    //long requestLength = par("requestLength");
+    long replyLength = par("replyLength");
+    //if (requestLength < 1)
+    //    requestLength = 1;
+    if (replyLength < 1)
+        replyLength = 1;
 
-    if (hbMsg != nullptr) {
-        HeartBeatMap hbMap;
-        hbMap[myHeartBeatRecord.devId] = myHeartBeatRecord;
-        //insert my record in the msg
-        hbMsg->setHeartBeatMap(hbMap);
-        if (numRequestsToSend <= 1) {
-            //The GO should replay to our request only when it is the last one in the session
-            //numRequestsToSend is used here to mimic the protocol time that the GO should
-            //wait until sending an HB msg with all the gathered informations about the GMs
-            hbMsg->setReplayNow(true);
-        } else {
-            hbMsg->setReplayNow(false);
-        }
+    HeartBeatMsg *hbMsg = new HeartBeatMsg("data");
+    //hbMsg->setByteLength(requestLength);
+    hbMsg->setExpectedReplyLength(replyLength);
+    hbMsg->setServerClose(false);
+    HeartBeatMap hbMap;
+    hbMap[myHeartBeatRecord.devId] = myHeartBeatRecord;
+    //insert my record in the msg
+    hbMsg->setHeartBeatMap(hbMap);
+    uint msgByteLen = sizeof(int) + sizeof(HeartBeatRecord);
+    hbMsg->setByteLength(msgByteLen);
+    if (numRequestsToSend <= 1) {
+        //The GO should replay to our request only when it is the last one in the session
+        //numRequestsToSend is used here to mimic the protocol time that the GO should
+        //wait until sending an HB msg with all the gathered informations about the GMs
+        hbMsg->setReplayNow(true);
+    } else {
+        hbMsg->setReplayNow(false);
+
+        simtime_t d = simTime() + (simtime_t) par("thinkTime");
+        rescheduleOrDeleteTimer(d, MSGKIND_SEND);
     }
 
-    TCPAppBase::sendPacket(msg);
+    EV_INFO << "sending request with " << msgByteLen //requestLength
+                   << " bytes, expected reply length " << replyLength
+                   << " bytes," << "remaining " << numRequestsToSend - 1
+                   << " request\n";
+
+    sendPacket (hbMsg);
 }
 
 void TCPMgmtClientApp::socketDataArrived(int connId, void* ptr, cPacket* msg,
         bool urgent) {
-    TCPAppBase::socketDataArrived(connId, ptr, msg, urgent);
 
     HeartBeatMsg *hbMsg = dynamic_cast<HeartBeatMsg*>(msg);
 
@@ -160,11 +217,13 @@ void TCPMgmtClientApp::socketDataArrived(int connId, void* ptr, cPacket* msg,
         EV_INFO << "reply to last request arrived, closing session\n";
         close();
     }
+
+    TCPAppBase::socketDataArrived(connId, ptr, msg, urgent);
 }
 
 void TCPMgmtClientApp::initMyHeartBeatRecord() {
     if (sdNic != nullptr) {
-        int devID = sdNic->getSubmodule("radio")->getId();
+        int devID = sdNic->getId();
         myHeartBeatRecord.devId = devID;
     }
 
@@ -172,7 +231,10 @@ void TCPMgmtClientApp::initMyHeartBeatRecord() {
         const InterfaceEntry* ie =
                 const_cast<const InterfaceEntry*>(ift->getInterfaceByName(
                         par("ipInterface")));
-        myHeartBeatRecord.ipAddress = ie->ipv4Data()->getIPAddress().str();
+        IPv4Address myIP = ie->ipv4Data()->getIPAddress();
+        if (!myIP.isUnspecified()) {
+            myHeartBeatRecord.ipAddress = myIP.str();
+        }
         myHeartBeatRecord.macAddress = ie->getMacAddress().str();
     }
 
