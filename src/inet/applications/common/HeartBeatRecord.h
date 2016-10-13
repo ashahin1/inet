@@ -8,7 +8,7 @@ using namespace std;
 
 struct HeartBeatRecord {
 public:
-    int devId = -1; //The id of the wlan0 for consistency with the service discovery app
+    int devId = -1; //The id of the device
     string ipAddress = "";
     string macAddress = "";
     StringVector reachableSSIDs;

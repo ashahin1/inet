@@ -50,13 +50,16 @@ public:
     cMessage *protocolMsg;
     bool *isGroupOwner;
 protected:
-    HeartBeatMap *heartBeatMap;
+    HeartBeatMap *heartBeatMapClient;
+    HeartBeatMap *heartBeatMapServer;
     DevicesInfo *peersInfo;
 public:
     ClipBoard();
     virtual ~ClipBoard();
-    HeartBeatMap *getHeartBeatMap();
-    void setHeartBeatMap(HeartBeatMap *heartBeatMap);
+    HeartBeatMap *getHeartBeatMapClient();
+    void setHeartBeatMapClient(HeartBeatMap *heartBeatMap);
+    HeartBeatMap *getHeartBeatMapServer();
+    void setHeartBeatMapServer(HeartBeatMap *heartBeatMap);
     DevicesInfo *getPeersInfo();
     void setPeersInfo(DevicesInfo* peersInfo);
 protected:

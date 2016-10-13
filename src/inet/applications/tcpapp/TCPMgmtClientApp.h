@@ -29,6 +29,7 @@ protected:
     ClipBoard *clpBrd = nullptr;
     IInterfaceTable *ift = nullptr;
     cModule *sdNic = nullptr;
+    cModule *device = nullptr;
 
     cMessage *ttlMsg = nullptr;
 
@@ -53,7 +54,7 @@ protected:
 private:
     void initMyHeartBeatRecord();
     void decreasePeersTtl();
-    void removeZeroTtl();
+    int removeZeroTtl();
     void setConnectAddressToGoIP();
 };
 

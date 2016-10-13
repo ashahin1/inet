@@ -46,12 +46,12 @@ void TCPMgmtClientApp::initialize(int stage) {
                 this);
         clpBrd = getModuleFromPar<ClipBoard>(par("clipBoardModule"), this);
         if (clpBrd != nullptr) {
-            clpBrd->setHeartBeatMap(&this->heartBeatMap);
+            clpBrd->setHeartBeatMapClient(&this->heartBeatMap);
         } else {
             cRuntimeError("Can't access clipBoard Module");
         }
 
-        cModule *device = getContainingNode(this);
+        device = getContainingNode(this);
         sdNic = device->getModuleByPath(par("sdNicName").stringValue());
 
         WATCH(myHeartBeatRecord.ipAddress);
@@ -98,7 +98,12 @@ bool TCPMgmtClientApp::handleOperationStage(LifecycleOperation *operation,
 void TCPMgmtClientApp::handleMessage(cMessage* msg) {
     if ((msg->isSelfMessage()) && (msg->getKind() == TTL_MSG)) {
         decreasePeersTtl();
-        removeZeroTtl();
+        int numRemoved = removeZeroTtl();
+        if (numRemoved > 0) {
+            char buff[40];
+            sprintf(buff, "Number of (TTL) removed = %d", numRemoved);
+            device->bubble(buff);
+        }
 
         scheduleAt(simTime() + par("decTtlPeriod"), msg);
     } else {
@@ -188,12 +193,13 @@ void TCPMgmtClientApp::sendRequest() {
         rescheduleOrDeleteTimer(d, MSGKIND_SEND);
     }
 
-    EV_INFO << "sending request with " << msgByteLen //requestLength
+    EV_INFO << "sending request with " << msgByteLen
+                   //requestLength
                    << " bytes, expected reply length " << replyLength
                    << " bytes," << "remaining " << numRequestsToSend - 1
                    << " request\n";
 
-    sendPacket (hbMsg);
+    sendPacket(hbMsg);
 }
 
 void TCPMgmtClientApp::socketDataArrived(int connId, void* ptr, cPacket* msg,
@@ -211,6 +217,8 @@ void TCPMgmtClientApp::socketDataArrived(int connId, void* ptr, cPacket* msg,
 
     }
 
+    //TODO: Change the logic here to allow for receiving another message (Proxy Assignment) from the GO.
+    //It could arrive or not based on if this device is selected or not
     if (numRequestsToSend > 0) {
         EV_INFO << "reply arrived\n";
     } else if (socket.getState() != TCPSocket::LOCALLY_CLOSED) {
@@ -222,8 +230,8 @@ void TCPMgmtClientApp::socketDataArrived(int connId, void* ptr, cPacket* msg,
 }
 
 void TCPMgmtClientApp::initMyHeartBeatRecord() {
-    if (sdNic != nullptr) {
-        int devID = sdNic->getId();
+    if (device != nullptr) {
+        int devID = device->getId();
         myHeartBeatRecord.devId = devID;
     }
 
@@ -257,7 +265,8 @@ void TCPMgmtClientApp::decreasePeersTtl() {
     }
 }
 
-void TCPMgmtClientApp::removeZeroTtl() {
+int TCPMgmtClientApp::removeZeroTtl() {
+    int numRemoved = 0;
     vector<int> idsToRemove;
 
     for (auto& pf : heartBeatMap) {
@@ -265,10 +274,11 @@ void TCPMgmtClientApp::removeZeroTtl() {
             idsToRemove.push_back(pf.first);
         }
     }
-
+    numRemoved = idsToRemove.size();
     for (uint i = 0; i < idsToRemove.size(); i++) {
         heartBeatMap.erase(idsToRemove[i]);
     }
+    return numRemoved;
 }
 
 } /* namespace inet */

@@ -42,6 +42,7 @@ protected:
     bool isGroupOwner = false;
     bool isOrphaned = false;
     bool isGroupMember = false;
+    string myGoName = "";
 
     simtime_t declareGoPeriod;
     simtime_t selectGoPeriod;

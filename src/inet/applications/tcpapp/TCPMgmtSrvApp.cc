@@ -47,12 +47,12 @@ void TCPMgmtSrvApp::initialize(int stage) {
                 this);
         clpBrd = getModuleFromPar<ClipBoard>(par("clipBoardModule"), this);
         if (clpBrd != nullptr) {
-            clpBrd->setHeartBeatMap(&this->heartBeatMap);
+            clpBrd->setHeartBeatMapServer(&this->heartBeatMap);
         } else {
             cRuntimeError("Can't access clipBoard Module");
         }
 
-        cModule *device = getContainingNode(this);
+        device = getContainingNode(this);
         sdNic = device->getModuleByPath(par("sdNicName").stringValue());
 
 //        ttlMsg = new cMessage("ttlMsg");
@@ -64,7 +64,12 @@ void TCPMgmtSrvApp::handleMessage(cMessage* msg) {
     if ((*clpBrd->isGroupOwner) == true) {
         if ((msg->isSelfMessage()) && (msg->getKind() == TTL_MSG)) {
             decreasePeersTtl();
-            removeZeroTtl();
+            int numRemoved = removeZeroTtl();
+            if (numRemoved > 0) {
+                char buff[40];
+                sprintf(buff, "Number of (TTL) removed = %d", numRemoved);
+                device->bubble(buff);
+            }
 
             scheduleAt(simTime() + par("decTtlPeriod"), msg);
         } else {
@@ -106,17 +111,54 @@ void TCPMgmtSrvApp::sendOrSchedule(cMessage* msg, simtime_t delay) {
     TCPGenericSrvApp::sendOrSchedule(msg, delay);
 }
 
+void TCPMgmtSrvApp::sendPxAssignmentIfCandidate(HeartBeatMsg* pxAssignMsg) {
+    //Now we need to send proxy member assignments to GMs
+    //This will be done each we send a normal heart beat(which have the list of IPs, etc)
+    //But this one will contain a another map with one record that have the list of
+    //reachable ssid filled with only one ssid (the one that this member is supposed to cover).
+
+    //First get the original sender Id
+    int prevDevID = -1;
+    HeartBeatMap hbMap = pxAssignMsg->getHeartBeatMap();
+    //Clients should send only one record
+    if (hbMap.size() == 1) {
+        for (auto& hb : hbMap) {
+            prevDevID = hb.first;
+        }
+    }
+    //We won't send the assigment if the device is not a candidate
+    if (isProxyCandidate(prevDevID)) {
+        uint msgByteLen = (sizeof(int) + sizeof(HeartBeatRecord));
+        pxAssignMsg->setByteLength(msgByteLen);
+        pxAssignMsg->setIsProxyAssignment(true);
+        //Now get the mapping and send the to the device
+        HeartBeatMap pxHbMap = getPxAssignmentMap(prevDevID);
+        pxAssignMsg->setHeartBeatMap(pxHbMap);
+
+        //And finally queue it for sending ;)
+        TCPGenericSrvApp::sendBack(pxAssignMsg);
+    } else {
+        delete pxAssignMsg;
+    }
+}
+
 void TCPMgmtSrvApp::sendBack(cMessage* msg) {
     HeartBeatMsg *hbPeerMsg = dynamic_cast<HeartBeatMsg*>(msg);
 
-    //Modify the msg by adding the current GO map instead of the GM map
     if (hbPeerMsg != nullptr) {
+        //dup to avoid filling the controlInfo again in case of Proxy assignment
+        HeartBeatMsg *pxAssignMsg = hbPeerMsg->dup();
+        //Modify the msg by adding the current GO map instead of the GM map
         hbPeerMsg->setHeartBeatMap(heartBeatMap);
         uint msgByteLen = (sizeof(int) + sizeof(HeartBeatRecord))
                 * heartBeatMap.size();
         hbPeerMsg->setByteLength(msgByteLen);
+        hbPeerMsg->setIsProxyAssignment(false);
 
         TCPGenericSrvApp::sendBack(hbPeerMsg);
+
+        //Tell the device if it is selected as a proxy member
+        sendPxAssignmentIfCandidate(pxAssignMsg);
     } else {
         TCPGenericSrvApp::sendBack(msg);
     }
@@ -124,8 +166,8 @@ void TCPMgmtSrvApp::sendBack(cMessage* msg) {
 }
 
 void TCPMgmtSrvApp::initMyHeartBeatRecord() {
-    if (sdNic != nullptr) {
-        int devID = sdNic->getId();
+    if (device != nullptr) {
+        int devID = device->getId();
         myHeartBeatRecord.devId = devID;
     }
 
@@ -147,7 +189,8 @@ void TCPMgmtSrvApp::decreasePeersTtl() {
     }
 }
 
-void TCPMgmtSrvApp::removeZeroTtl() {
+int TCPMgmtSrvApp::removeZeroTtl() {
+    int numRemoved = 0;
     vector<int> idsToRemove;
 
     for (auto& pf : heartBeatMap) {
@@ -155,10 +198,45 @@ void TCPMgmtSrvApp::removeZeroTtl() {
             idsToRemove.push_back(pf.first);
         }
     }
-
+    numRemoved = idsToRemove.size();
     for (uint i = 0; i < idsToRemove.size(); i++) {
         heartBeatMap.erase(idsToRemove[i]);
     }
+    return numRemoved;
+}
+
+bool TCPMgmtSrvApp::isProxyCandidate(int prevDevId) {
+    for (auto& pa : pxAssignment) {
+        if (pa.second == prevDevId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+HeartBeatMap TCPMgmtSrvApp::getPxAssignmentMap(int prevDevID) {
+    HeartBeatMap hbMap;
+    //first extract the deviceRecord
+    if (heartBeatMap.count(prevDevID) > 0) {
+        HeartBeatRecord hbRec = heartBeatMap[prevDevID];
+
+        hbRec.reachableSSIDs.clear();
+        for (auto& pa : pxAssignment) {
+            if (pa.second == prevDevID) {
+                hbRec.reachableSSIDs.push_back(pa.first);
+                break;
+            }
+        }
+        hbMap[prevDevID] = hbRec;
+    }
+
+    return hbMap;
+}
+
+void TCPMgmtSrvApp::calcPxAssignments() {
+    pxAssignment.clear();
+
+    //Do the actual calculation
 }
 
 } /* namespace inet */

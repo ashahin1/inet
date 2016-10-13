@@ -115,7 +115,7 @@ void UDPWFDServiceDiscovery::refreshDisplay() const {
         if (isOrphaned) {
             sprintf(buf2, "Orph");
         } else if (isGroupMember) {
-            sprintf(buf2, "GM");
+            sprintf(buf2, "GM->%s", myGoName.c_str());
         } else {
             sprintf(buf2, "??");
         }
@@ -128,6 +128,7 @@ void UDPWFDServiceDiscovery::resetDevice() {
     isGroupOwner = false;
     isOrphaned = false;
     isGroupMember = false;
+    myGoName = "";
     peersInfo.clear();
     //myInfo = DeviceInfo();
     updateMyInfo(false);
@@ -252,8 +253,8 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
         numResponseSent++;
     }
 
-    //Declare that the sender is the service discovery card
-    int sId = sdNic->getId();
+    //Declare that the sender is this device
+    int sId = device->getId();
     payload->setSenderId(sId);
 
     payload->setByteLength(par("messageLength").longValue());
@@ -568,6 +569,7 @@ DeviceInfo *UDPWFDServiceDiscovery::getBestRankGO() {
             if (curRank > bestRank) {
                 bestRank = curRank;
                 bestDevice = &pf.second;
+                myGoName = cSimulation::getActiveSimulation()->getModule(pf.first)->getFullName();
             }
         }
     }

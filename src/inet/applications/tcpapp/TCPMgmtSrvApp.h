@@ -22,16 +22,21 @@
 
 namespace inet {
 
+using namespace std;
+typedef map<string, int> PxAssignment;
+
 class TCPMgmtSrvApp: public TCPGenericSrvApp {
 protected:
     ClipBoard *clpBrd = nullptr;
     IInterfaceTable *ift = nullptr;
     cModule *sdNic = nullptr;
+    cModule *device = nullptr;
 
     cMessage *ttlMsg = nullptr;
 
     HeartBeatMap heartBeatMap;
     HeartBeatRecord myHeartBeatRecord;
+    PxAssignment pxAssignment;
 public:
     TCPMgmtSrvApp();
     virtual ~TCPMgmtSrvApp();
@@ -44,7 +49,11 @@ protected:
 private:
     void initMyHeartBeatRecord();
     void decreasePeersTtl();
-    void removeZeroTtl();
+    int removeZeroTtl();
+    void sendPxAssignmentIfCandidate(HeartBeatMsg* pxAssignMsg);
+    bool isProxyCandidate(int prevDevId);
+    HeartBeatMap getPxAssignmentMap(int prevDevID);
+    void calcPxAssignments();
 };
 
 } /* namespace inet */

@@ -23,7 +23,8 @@ ClipBoard::ClipBoard() {
     // TODO Auto-generated constructor stub
     protocolMsg = nullptr;
     isGroupOwner = nullptr;
-    heartBeatMap = nullptr;
+    heartBeatMapClient = nullptr;
+    heartBeatMapServer = nullptr;
     peersInfo = nullptr;
 }
 
@@ -32,18 +33,27 @@ ClipBoard::~ClipBoard() {
 }
 
 void ClipBoard::initialize(int stage) {
-    WATCH(heartBeatMap);
+    WATCH(heartBeatMapClient);
+    WATCH(heartBeatMapServer);
     WATCH(peersInfo);
     WATCH(protocolMsg);
     WATCH(*isGroupOwner);
 }
 
-HeartBeatMap* ClipBoard::getHeartBeatMap() {
-    return heartBeatMap;
+HeartBeatMap* ClipBoard::getHeartBeatMapClient() {
+    return heartBeatMapClient;
 }
 
-void ClipBoard::setHeartBeatMap(HeartBeatMap* heartBeatMap) {
-    this->heartBeatMap = heartBeatMap;
+void ClipBoard::setHeartBeatMapClient(HeartBeatMap* heartBeatMap) {
+    this->heartBeatMapClient = heartBeatMap;
+}
+
+HeartBeatMap* ClipBoard::getHeartBeatMapServer() {
+    return heartBeatMapServer;
+}
+
+void ClipBoard::setHeartBeatMapServer(HeartBeatMap* heartBeatMap) {
+    this->heartBeatMapServer = heartBeatMap;
 }
 
 DevicesInfo* ClipBoard::getPeersInfo() {
@@ -57,7 +67,8 @@ void ClipBoard::setPeersInfo(DevicesInfo* peersInfo) {
 void ClipBoard::refreshDisplay() const {
     // refresh statistics
     char buf[32];
-    sprintf(buf, "HBs:%d  PIs:%d", heartBeatMap->size(), peersInfo->size());
+    sprintf(buf, "HBC:%lu  HBS:%lu  PI:%lu", heartBeatMapClient->size(),
+            heartBeatMapServer->size(), peersInfo->size());
     getDisplayString().setTagArg("t", 0, buf);
 }
 
