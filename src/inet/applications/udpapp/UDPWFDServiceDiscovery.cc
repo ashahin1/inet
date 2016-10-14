@@ -569,7 +569,8 @@ DeviceInfo *UDPWFDServiceDiscovery::getBestRankGO() {
             if (curRank > bestRank) {
                 bestRank = curRank;
                 bestDevice = &pf.second;
-                myGoName = cSimulation::getActiveSimulation()->getModule(pf.first)->getFullName();
+                myGoName = cSimulation::getActiveSimulation()->getModule(
+                        pf.first)->getFullName();
             }
         }
     }
