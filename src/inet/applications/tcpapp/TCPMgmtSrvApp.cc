@@ -106,6 +106,12 @@ void TCPMgmtSrvApp::sendOrSchedule(cMessage* msg, simtime_t delay) {
             delete msg;
             return;
         }
+
+        //Calculate the needed assignments for proxy members
+        //We should be in proxy selection state to do it
+        if (clpBrd->protocolMsg->getKind() == SET_PROXY_DHCP) {
+            calcPxAssignments();
+        }
     }
 
     TCPGenericSrvApp::sendOrSchedule(msg, delay);
@@ -126,7 +132,7 @@ void TCPMgmtSrvApp::sendPxAssignmentIfCandidate(HeartBeatMsg* pxAssignMsg) {
             prevDevID = hb.first;
         }
     }
-    //We won't send the assigment if the device is not a candidate
+    //We won't send the assignment if the device is not a candidate
     if (isProxyCandidate(prevDevID)) {
         uint msgByteLen = (sizeof(int) + sizeof(HeartBeatRecord));
         pxAssignMsg->setByteLength(msgByteLen);
@@ -157,8 +163,13 @@ void TCPMgmtSrvApp::sendBack(cMessage* msg) {
 
         TCPGenericSrvApp::sendBack(hbPeerMsg);
 
-        //Tell the device if it is selected as a proxy member
-        sendPxAssignmentIfCandidate(pxAssignMsg);
+        //We should be in proxy selection state to send proxy assignments
+        //Thus we check the message kind, which tells what command to be done next.
+        //So if it is SET_PROXY_DHCP, then it means that the current state is selecting proxies
+        if (clpBrd->protocolMsg->getKind() == SET_PROXY_DHCP) {
+            //Tell the device if it is selected as a proxy member
+            sendPxAssignmentIfCandidate(pxAssignMsg);
+        }
     } else {
         TCPGenericSrvApp::sendBack(msg);
     }
@@ -235,8 +246,9 @@ HeartBeatMap TCPMgmtSrvApp::getPxAssignmentMap(int prevDevID) {
 
 void TCPMgmtSrvApp::calcPxAssignments() {
     pxAssignment.clear();
-
     //Do the actual calculation
+
+    //make sure that we excluded our ssid
 }
 
 } /* namespace inet */
