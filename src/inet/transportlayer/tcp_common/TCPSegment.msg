@@ -48,7 +48,7 @@ cplusplus {{
 
     inline std::ostream& operator<<(std::ostream& os, cPacketPtr msg)
     {
-        return os << "(" << msg->getClassName() << ") " << msg->getName() << ": " << msg->info();
+        return os << "(" << msg->getClassName() << ") " << msg->getName() << ": " << msg->str();
     }
 
     inline void doPacking(cCommBuffer *b, cPacketPtr& msg) {msg->parsimPack(b);}
