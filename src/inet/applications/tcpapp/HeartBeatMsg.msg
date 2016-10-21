@@ -33,5 +33,6 @@ packet GenericAppMsg;
 packet HeartBeatMsg extends GenericAppMsg {
 	HeartBeatMap heartBeatMap;
 	bool replayNow = false;
+	bool nextIsProxyAssignment = false;
 	bool isProxyAssignment = false;
 }

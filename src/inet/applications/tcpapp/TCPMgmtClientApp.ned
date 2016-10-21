@@ -24,6 +24,7 @@ simple TCPMgmtClientApp extends TCPBasicClientApp
     string clipBoardModule = default("");
     string ipInterface = default("wlan2");
     string sdNicName = default(".wlan[0]");
+    string pxNicName = default(".wlan[3]");
     int hb_ttl = default(30);
     double decTtlPeriod @unit(s) = default(1s);
 

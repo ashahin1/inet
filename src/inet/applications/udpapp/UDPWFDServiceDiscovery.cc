@@ -194,7 +194,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             //switch dhcp client to wlan3 intf
             if (!isGroupOwner) {
                 if (!noGoAround()) {
-                    changeProxySSID("xyz"); //TODO: get the ssid from the tcp app
+                    //changeProxySSID("xyz"); //TODO: set the ssid from the tcp app
                     turnProxyInterfaceOn();
                     switchDhcpClientToProxy();
                 }

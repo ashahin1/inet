@@ -117,13 +117,7 @@ void TCPMgmtSrvApp::sendOrSchedule(cMessage* msg, simtime_t delay) {
     TCPGenericSrvApp::sendOrSchedule(msg, delay);
 }
 
-void TCPMgmtSrvApp::sendPxAssignmentIfCandidate(HeartBeatMsg* pxAssignMsg) {
-    //Now we need to send proxy member assignments to GMs
-    //This will be done each we send a normal heart beat(which have the list of IPs, etc)
-    //But this one will contain a another map with one record that have the list of
-    //reachable ssid filled with only one ssid (the one that this member is supposed to cover).
-
-    //First get the original sender Id
+int TCPMgmtSrvApp::getHbMsgSenderID(HeartBeatMsg* pxAssignMsg) {
     int prevDevID = -1;
     HeartBeatMap hbMap = pxAssignMsg->getHeartBeatMap();
     //Clients should send only one record
@@ -132,20 +126,26 @@ void TCPMgmtSrvApp::sendPxAssignmentIfCandidate(HeartBeatMsg* pxAssignMsg) {
             prevDevID = hb.first;
         }
     }
-    //We won't send the assignment if the device is not a candidate
-    if (isProxyCandidate(prevDevID)) {
-        uint msgByteLen = (sizeof(int) + sizeof(HeartBeatRecord));
-        pxAssignMsg->setByteLength(msgByteLen);
-        pxAssignMsg->setIsProxyAssignment(true);
-        //Now get the mapping and send the to the device
-        HeartBeatMap pxHbMap = getPxAssignmentMap(prevDevID);
-        pxAssignMsg->setHeartBeatMap(pxHbMap);
+    return prevDevID;
+}
 
-        //And finally queue it for sending ;)
-        TCPGenericSrvApp::sendBack(pxAssignMsg);
-    } else {
-        delete pxAssignMsg;
-    }
+void TCPMgmtSrvApp::sendPxAssignment(int PrevSenderID,
+        HeartBeatMsg* pxAssignMsg) {
+    //Now we need to send proxy member assignments to GMs
+    //This will be done each time we send a normal heart beat(which have the list of IPs, etc)
+    //But this one will contain a another map with one record that have the list of
+    //reachable ssid filled with only one ssid (the one that this member is supposed to cover).
+
+    uint msgByteLen = (sizeof(int) + sizeof(HeartBeatRecord));
+    pxAssignMsg->setByteLength(msgByteLen);
+    pxAssignMsg->setNextIsProxyAssignment(false);
+    //Now get the mapping and send the to the device
+    HeartBeatMap pxHbMap = getPxAssignmentMap(PrevSenderID);
+    pxAssignMsg->setHeartBeatMap(pxHbMap);
+    pxAssignMsg->setIsProxyAssignment(true);
+
+    //And finally queue it for sending ;)
+    TCPGenericSrvApp::sendBack(pxAssignMsg);
 }
 
 void TCPMgmtSrvApp::sendBack(cMessage* msg) {
@@ -154,21 +154,32 @@ void TCPMgmtSrvApp::sendBack(cMessage* msg) {
     if (hbPeerMsg != nullptr) {
         //dup to avoid filling the controlInfo again in case of Proxy assignment
         HeartBeatMsg *pxAssignMsg = hbPeerMsg->dup();
+        //First get the original sender Id
+        int prevSenderID = getHbMsgSenderID(pxAssignMsg);
+        //We won't send the assignment if the device is not a candidate
+        bool isPxCandiate = isProxyCandidate(prevSenderID);
+        //We should be in proxy selection state to send proxy assignments
+        //Thus we check the message kind, which tells what command to be done next.
+        //So if it is SET_PROXY_DHCP, then it means that the current state is selecting proxies
+        bool isInSetPxState = clpBrd->protocolMsg->getKind() == SET_PROXY_DHCP;
+        bool needPxAssignment = isInSetPxState && isPxCandiate;
+
         //Modify the msg by adding the current GO map instead of the GM map
         hbPeerMsg->setHeartBeatMap(heartBeatMap);
         uint msgByteLen = (sizeof(int) + sizeof(HeartBeatRecord))
                 * heartBeatMap.size();
         hbPeerMsg->setByteLength(msgByteLen);
+        hbPeerMsg->setNextIsProxyAssignment(needPxAssignment);
         hbPeerMsg->setIsProxyAssignment(false);
 
+        //Send the normal heart beat msg that have the list of IP/MAC addresses of all members
         TCPGenericSrvApp::sendBack(hbPeerMsg);
 
-        //We should be in proxy selection state to send proxy assignments
-        //Thus we check the message kind, which tells what command to be done next.
-        //So if it is SET_PROXY_DHCP, then it means that the current state is selecting proxies
-        if (clpBrd->protocolMsg->getKind() == SET_PROXY_DHCP) {
+        if (needPxAssignment) {
             //Tell the device if it is selected as a proxy member
-            sendPxAssignmentIfCandidate(pxAssignMsg);
+            sendPxAssignment(prevSenderID, pxAssignMsg);
+        } else {
+            delete pxAssignMsg;
         }
     } else {
         TCPGenericSrvApp::sendBack(msg);

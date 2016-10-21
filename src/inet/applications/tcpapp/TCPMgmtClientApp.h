@@ -25,10 +25,12 @@ namespace inet {
 class TCPMgmtClientApp: public TCPBasicClientApp {
 protected:
     string status = "";
+    bool nextMsgIsPxAssignment = false;
 
     ClipBoard *clpBrd = nullptr;
     IInterfaceTable *ift = nullptr;
     cModule *sdNic = nullptr;
+    cModule *pxNic = nullptr;
     cModule *device = nullptr;
 
     cMessage *ttlMsg = nullptr;

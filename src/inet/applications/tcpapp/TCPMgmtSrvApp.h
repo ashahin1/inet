@@ -50,10 +50,11 @@ private:
     void initMyHeartBeatRecord();
     void decreasePeersTtl();
     int removeZeroTtl();
-    void sendPxAssignmentIfCandidate(HeartBeatMsg* pxAssignMsg);
+    void sendPxAssignment(int PrevSenderID, HeartBeatMsg* pxAssignMsg);
     bool isProxyCandidate(int prevDevId);
     HeartBeatMap getPxAssignmentMap(int prevDevID);
     void calcPxAssignments();
+    int getHbMsgSenderID(HeartBeatMsg* pxAssignMsg);
 };
 
 } /* namespace inet */

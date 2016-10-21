@@ -80,7 +80,7 @@ protected:
     virtual void initialize(int stage) override;
     virtual void finish() override;
     virtual void processStart() override;
-    virtual void handleMessageWhenUp(cMessage *msg); // override;
+    virtual void handleMessageWhenUp(cMessage *msg) override;
     UDPSocket::SendOptions* setDatagramOutInterface();
     virtual void refreshDisplay() const override;
 

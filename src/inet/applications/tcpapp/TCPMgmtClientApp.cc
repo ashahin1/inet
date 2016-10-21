@@ -53,6 +53,7 @@ void TCPMgmtClientApp::initialize(int stage) {
 
         device = getContainingNode(this);
         sdNic = device->getModuleByPath(par("sdNicName").stringValue());
+        pxNic = device->getModuleByPath(par("pxNicName").stringValue());
 
         WATCH(myHeartBeatRecord.ipAddress);
     }
@@ -113,7 +114,7 @@ void TCPMgmtClientApp::handleMessage(cMessage* msg) {
 
 void TCPMgmtClientApp::refreshDisplay() const {
     char buf[80];
-    sprintf(buf, "%s\nrcvd: %ld pks %ld bytes\nsent: %ld pks %ld bytes",
+    sprintf(buf, "%s\nrcvd: %d pks %d bytes\nsent: %d pks %d bytes",
             status.c_str(), packetsRcvd, bytesRcvd, packetsSent, bytesSent);
     getDisplayString().setTagArg("t", 0, buf);
 }
@@ -208,18 +209,27 @@ void TCPMgmtClientApp::socketDataArrived(int connId, void* ptr, cPacket* msg,
     HeartBeatMsg *hbMsg = dynamic_cast<HeartBeatMsg*>(msg);
 
     if (hbMsg != nullptr) {
-        //If its a HB Msg, extract the embedded records and store it in our map
         HeartBeatMap hbMap = hbMsg->getHeartBeatMap();
 
-        for (auto& hb : hbMap) {
-            heartBeatMap[hb.first] = hb.second;
+        if (!hbMsg->getIsProxyAssignment()) {
+            //If its a HB Msg, extract the embedded records and store it in our map
+            for (auto& hb : hbMap) {
+                heartBeatMap[hb.first] = hb.second;
+            }
+        } else {
+            //Change the ssid of the pxNic to the one given in the msg
+            HeartBeatRecord hbRec = hbMap[myHeartBeatRecord.devId];
+            const char *ssid = hbRec.reachableSSIDs[0].c_str();
+            if (pxNic != nullptr)
+                pxNic->getSubmodule("agent")->par("default_ssid").setStringValue(
+                        ssid);
         }
-
+        nextMsgIsPxAssignment = hbMsg->getNextIsProxyAssignment();
     }
 
-    //TODO: Change the logic here to allow for receiving another message (Proxy Assignment) from the GO.
+    //Allow for receiving another message (Proxy Assignment) from the GO.
     //It could arrive or not based on if this device is selected or not
-    if (numRequestsToSend > 0) {
+    if ((numRequestsToSend > 0) || nextMsgIsPxAssignment) {
         EV_INFO << "reply arrived\n";
     } else if (socket.getState() != TCPSocket::LOCALLY_CLOSED) {
         EV_INFO << "reply to last request arrived, closing session\n";
