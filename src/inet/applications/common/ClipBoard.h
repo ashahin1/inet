@@ -35,13 +35,15 @@ static const int TTL_MSG = 9999;
 
 struct DeviceInfo {
 public:
+    int deviceId = -1;
     double batteryCapacity = -1.0f;
     double batteryLevel = -1;
     bool isCharging = false;
-    string propsedSubnet = "-";
+    string proposedSubnet = "-";
     string conflictedSubnets = "";
     string ssid = "";
     string key = "";
+    int proposedGO = -1;
 };
 typedef std::map<int, DeviceInfo> DevicesInfo;
 

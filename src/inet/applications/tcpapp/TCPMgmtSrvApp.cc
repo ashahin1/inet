@@ -54,7 +54,11 @@ void TCPMgmtSrvApp::initialize(int stage) {
 
         device = getContainingNode(this);
         sdNic = device->getModuleByPath(par("sdNicName").stringValue());
+        apNic = device->getModuleByPath(par("ApNicName").stringValue());
 
+        if (apNic != nullptr) {
+            mySSID = apNic->getSubmodule("mgmt")->par("ssid").stringValue();
+        }
 //        ttlMsg = new cMessage("ttlMsg");
 //        ttlMsg->setKind(TTL_MSG);
     }
@@ -227,29 +231,29 @@ int TCPMgmtSrvApp::removeZeroTtl() {
     return numRemoved;
 }
 
-bool TCPMgmtSrvApp::isProxyCandidate(int prevDevId) {
+bool TCPMgmtSrvApp::isProxyCandidate(int devId) {
     for (auto& pa : pxAssignment) {
-        if (pa.second == prevDevId) {
+        if (pa.second == devId) {
             return true;
         }
     }
     return false;
 }
 
-HeartBeatMap TCPMgmtSrvApp::getPxAssignmentMap(int prevDevID) {
+HeartBeatMap TCPMgmtSrvApp::getPxAssignmentMap(int devID) {
     HeartBeatMap hbMap;
     //first extract the deviceRecord
-    if (heartBeatMap.count(prevDevID) > 0) {
-        HeartBeatRecord hbRec = heartBeatMap[prevDevID];
+    if (heartBeatMap.count(devID) > 0) {
+        HeartBeatRecord hbRec = heartBeatMap[devID];
 
         hbRec.reachableSSIDs.clear();
         for (auto& pa : pxAssignment) {
-            if (pa.second == prevDevID) {
+            if (pa.second == devID) {
                 hbRec.reachableSSIDs.push_back(pa.first);
                 break;
             }
         }
-        hbMap[prevDevID] = hbRec;
+        hbMap[devID] = hbRec;
     }
 
     return hbMap;
@@ -258,6 +262,22 @@ HeartBeatMap TCPMgmtSrvApp::getPxAssignmentMap(int prevDevID) {
 void TCPMgmtSrvApp::calcPxAssignments() {
     pxAssignment.clear();
     //Do the actual calculation
+    map<string, int> ssidCoverage;
+
+    //build a map that have the number of GMs that cover each SSID
+    for (auto& hbMap : heartBeatMap) {
+        for (int i = 0; i < hbMap.second.reachableSSIDs.size(); i++) {
+            string ssid = hbMap.second.reachableSSIDs[i];
+            //make sure that we excluded our ssid
+            if (ssid.compare(mySSID) != 0) {
+                if (ssidCoverage.count(ssid) == 0) {
+                    ssidCoverage[ssid] = 1;
+                } else {
+                    ssidCoverage[ssid] = ssidCoverage[ssid]++;
+                }
+            }
+        }
+    }
 
     //make sure that we excluded our ssid
 }

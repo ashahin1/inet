@@ -120,6 +120,7 @@ private:
     void addOrUpdatePeerSapInfo(int senderModuleId,
             ServiceDiscoveryResponseSapInfo* respSapInfo);
     void resetDevice();
+    bool myProposedGoNeedsUpdate();
 };
 
 } /* namespace inet */

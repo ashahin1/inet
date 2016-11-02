@@ -30,6 +30,7 @@ protected:
     ClipBoard *clpBrd = nullptr;
     IInterfaceTable *ift = nullptr;
     cModule *sdNic = nullptr;
+    cModule *apNic = nullptr;
     cModule *device = nullptr;
 
     cMessage *ttlMsg = nullptr;
@@ -37,6 +38,8 @@ protected:
     HeartBeatMap heartBeatMap;
     HeartBeatRecord myHeartBeatRecord;
     PxAssignment pxAssignment;
+
+    string mySSID = "";
 public:
     TCPMgmtSrvApp();
     virtual ~TCPMgmtSrvApp();

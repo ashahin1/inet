@@ -88,13 +88,14 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
         tearDownPeriod = par("tearDownPeriod");
 
         updateMyInfo(false);
+        myInfo.deviceId = device->getId();
 
         endToEndDelayVec.setName("SrvDsc End-to-End Delay");
         protocolMsg = new cMessage("Protocol Message");
         clpBrd->protocolMsg = protocolMsg;
         clpBrd->isGroupOwner = &isGroupOwner;
 
-        WATCH(myInfo.propsedSubnet);
+        WATCH(myInfo.proposedSubnet);
         WATCH(isGroupOwner);
     }
 }
@@ -120,6 +121,11 @@ void UDPWFDServiceDiscovery::refreshDisplay() const {
             sprintf(buf2, "??");
         }
     }
+
+    char buff[100];
+    sprintf(buff, "r=%f, pGo=%d, id=%d", const_cast<UDPWFDServiceDiscovery*>(this)->getMyRank(), myInfo.proposedGO, myInfo.deviceId);
+    sprintf(buf2, "%s\n%s", buf2, buff);
+
     device->getDisplayString().setTagArg("t", 0, buf2);
 }
 
@@ -156,7 +162,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             //  declare my self as GO to start sending SAP info
             //
             updateMyInfo(true);
-            isGroupOwner = getBestRankDevice() == nullptr;
+            isGroupOwner = (myInfo.deviceId == myInfo.proposedGO);//getBestRankDevice() == nullptr;
             if (isGroupOwner) {
                 if (subnetConflicting())
                     getConflictFreeSubnet();
@@ -254,7 +260,7 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
     }
 
     //Declare that the sender is this device
-    int sId = device->getId();
+    int sId = myInfo.deviceId;
     payload->setSenderId(sId);
 
     payload->setByteLength(par("messageLength").longValue());
@@ -288,17 +294,21 @@ void UDPWFDServiceDiscovery::addOrUpdatePeerDevInfo(int senderId,
         ServiceDiscoveryResponseDeviceInfo* respDevInfo) {
 
     DeviceInfo pInfo;
+    pInfo.deviceId = senderId;
     pInfo.batteryCapacity = respDevInfo->getBatteryCapacity();
     pInfo.batteryLevel = respDevInfo->getBatteryLevel();
     pInfo.isCharging = respDevInfo->getIsCharging();
-    pInfo.propsedSubnet = respDevInfo->getPropsedSubnet();
+    pInfo.proposedSubnet = respDevInfo->getProposedSubnet();
     pInfo.conflictedSubnets = respDevInfo->getConflictedSubnets();
+    pInfo.proposedGO = respDevInfo->getProposedGO();
     if (peersInfo.count(senderId) > 0) {
         DeviceInfo* pf = &peersInfo[senderId];
         pf->batteryCapacity = pInfo.batteryCapacity;
         pf->batteryLevel = pInfo.batteryLevel;
         pf->isCharging = pInfo.isCharging;
-        pf->propsedSubnet = pInfo.propsedSubnet;
+        pf->proposedSubnet = pInfo.proposedSubnet;
+        pf->conflictedSubnets = pInfo.conflictedSubnets;
+        pf->proposedGO = pInfo.proposedGO;
     } else {
         peersInfo[senderId] = pInfo;
     }
@@ -308,6 +318,7 @@ void UDPWFDServiceDiscovery::addOrUpdatePeerSapInfo(int senderId,
         ServiceDiscoveryResponseSapInfo* respSapInfo) {
 
     DeviceInfo pInfo;
+    pInfo.deviceId = senderId;
     pInfo.ssid = respSapInfo->getSsid();
     pInfo.key = respSapInfo->getKey();
     if (peersInfo.count(senderId) > 0) {
@@ -443,7 +454,7 @@ void UDPWFDServiceDiscovery::setApIpAddress() {
                     interfaceName);
 
         IPv4Address ip;
-        string ipStr = "10." + myInfo.propsedSubnet + ".1";
+        string ipStr = "10." + myInfo.proposedSubnet + ".1";
         ip.set(ipStr.c_str());
 
         IPv4Address mask;
@@ -455,8 +466,8 @@ void UDPWFDServiceDiscovery::setApIpAddress() {
 }
 void UDPWFDServiceDiscovery::setDhcpServerParams() {
     if (dhcpServer != nullptr) {
-        string ipGateway = "10." + myInfo.propsedSubnet + ".1";
-        string ipStr = "10." + myInfo.propsedSubnet + ".2";
+        string ipGateway = "10." + myInfo.proposedSubnet + ".1";
+        string ipStr = "10." + myInfo.proposedSubnet + ".2";
         dhcpServer->par("ipAddressStart").setStringValue(ipStr.c_str());
         dhcpServer->par("subnetMask").setStringValue("255.255.255.0");
         dhcpServer->par("gateway").setStringValue(ipGateway.c_str());
@@ -464,6 +475,7 @@ void UDPWFDServiceDiscovery::setDhcpServerParams() {
 }
 
 void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
+    //myInfo.deviceId is updated in initialize;
     if (energyStorage != nullptr) {
         myInfo.batteryCapacity = energyStorage->getNominalCapacity().get();
         myInfo.batteryLevel = energyStorage->getResidualCapacity().get()
@@ -476,10 +488,10 @@ void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
     myInfo.isCharging = !(genPower == 0);
 
     if (!devInfoOnly) {
-        if (myInfo.propsedSubnet.compare("-") == 0) {
-            myInfo.propsedSubnet = proposeSubnet();
+        if (myInfo.proposedSubnet.compare("-") == 0) {
+            myInfo.proposedSubnet = proposeSubnet();
         } else if (subnetConflicting()) {
-            myInfo.propsedSubnet = getConflictFreeSubnet();
+            myInfo.proposedSubnet = getConflictFreeSubnet();
         }
         myInfo.conflictedSubnets = getPeersConflictedSubnets();
 
@@ -488,21 +500,45 @@ void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
                     apNic->getSubmodule("mgmt")->par("ssid").stringValue();
             myInfo.key = "";
         }
+
+        if (myProposedGoNeedsUpdate()) {
+            //Now update my proposed GO. It will be send to other devices
+            //So they could know that I have another one who is better than me.
+            DeviceInfo *bstDev = getBestRankDevice();
+            myInfo.proposedGO = (
+                    bstDev == nullptr ? myInfo.deviceId : bstDev->deviceId);
+        }
     }
 
-    ASSERT(myInfo.propsedSubnet.compare("-") != 0);
+    ASSERT(myInfo.proposedSubnet.compare("-") != 0);
+}
+
+bool UDPWFDServiceDiscovery::myProposedGoNeedsUpdate() {
+
+    if (myInfo.proposedGO == -1) {
+        return true;
+    }
+
+    if ((peersInfo.count(myInfo.proposedGO) > 0)
+            && (peersInfo[myInfo.proposedGO].deviceId
+                    == peersInfo[myInfo.proposedGO].proposedGO)) {
+        return false;
+    } else {
+        return true;
+    }
 }
 
 void UDPWFDServiceDiscovery::addDeviceInfoToPayLoad(
         ServiceDiscoveryResponseDeviceInfo* payload, simtime_t orgSendTime) {
     payload->setOrgSendTime(orgSendTime);
+    payload->setProposedGO(myInfo.proposedGO);
+    payload->setProposedSubnet(myInfo.proposedSubnet.c_str());
+    payload->setConflictedSubnets(myInfo.conflictedSubnets.c_str());
 
     if (energyStorage != nullptr) {
         payload->setBatteryCapacity(myInfo.batteryCapacity);
         payload->setBatteryLevel(myInfo.batteryLevel);
         payload->setIsCharging(myInfo.isCharging);
-        payload->setPropsedSubnet(myInfo.propsedSubnet.c_str());
-        payload->setConflictedSubnets(myInfo.conflictedSubnets.c_str());
     }
 }
 
@@ -542,10 +578,14 @@ DeviceInfo *UDPWFDServiceDiscovery::getBestRankDevice() {
     DeviceInfo *bestDevice = nullptr;
 
     for (auto& pf : peersInfo) {
-        curRank = getRank(pf.second);
-        if (curRank > bestRank) {
-            bestRank = curRank;
-            bestDevice = &pf.second;
+        //check first if the device does not have another device that he sees that
+        //has a rank better than him.
+        if (pf.second.proposedGO == pf.second.deviceId) {
+            curRank = getRank(pf.second);
+            if (curRank > bestRank) {
+                bestRank = curRank;
+                bestDevice = &pf.second;
+            }
         }
     }
 
@@ -605,9 +645,9 @@ string UDPWFDServiceDiscovery::getPeersConflictedSubnets() {
     for (auto& pf1 : peersInfo) {
         for (auto& pf2 : peersInfo) {
             if (pf1.first != pf2.first) {
-                if (pf1.second.propsedSubnet.compare(pf2.second.propsedSubnet)
+                if (pf1.second.proposedSubnet.compare(pf2.second.proposedSubnet)
                         == 0) {
-                    cfStr += pf1.second.propsedSubnet + ";";
+                    cfStr += pf1.second.proposedSubnet + ";";
                 }
             }
         }
@@ -618,12 +658,12 @@ string UDPWFDServiceDiscovery::getPeersConflictedSubnets() {
 bool UDPWFDServiceDiscovery::subnetConflicting() {
     for (auto& pf : peersInfo) {
         //Check if my subnet is in the detected conflicts of other devices
-        if (pf.second.conflictedSubnets.find(myInfo.propsedSubnet)
+        if (pf.second.conflictedSubnets.find(myInfo.proposedSubnet)
                 != string::npos)
             return true;
 
         //Check if my subnet is conflicting with proposed subnets of other devices
-        if (pf.second.propsedSubnet.compare(myInfo.propsedSubnet) == 0)
+        if (pf.second.proposedSubnet.compare(myInfo.proposedSubnet) == 0)
             return true;
     }
     return false;
