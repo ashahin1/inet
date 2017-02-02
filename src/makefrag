@@ -1,4 +1,12 @@
 #
+# on windows we have to link with the winsock library as it is no longer added 
+# to the oomnetpp system libraries by default
+#
+ifeq ($(PLATFORM),win32.x86_64)
+  LIBS += -lwsock32
+endif
+
+#
 # TCP implementaion using the Network Simulation Cradle (TCP_NSC feature)
 #
 
@@ -7,7 +15,7 @@ ifeq ($(WITH_TCP_NSC), enabled)
   NSC_VERSION= $(shell ls -d ../3rdparty/nsc* 2>/dev/null | sed 's/^.*-//')
   ifneq ($(NSC_VERSION),)
     CFLAGS += -I../3rdparty/nsc-$(NSC_VERSION)/sim -DHAVE_NSC
-    LIBS += -Wl,-rpath,`abspath ../3rdparty/nsc-$(NSC_VERSION)`
+    LIBS += -Wl,-rpath,$(abspath ../3rdparty/nsc-$(NSC_VERSION))
   endif
 endif
 
@@ -46,7 +54,7 @@ endif
 #
 WITH_VISUALIZERS := $(shell (cd .. && ./inet_featuretool -q isenabled visualization && echo enabled) )
 ifeq ($(WITH_VISUALIZERS), enabled)
-  ifeq ($(WITH_OSG), yes)
+  ifeq ($(WITH_OSGEARTH), yes)
       OMNETPP_LIBS += -lOpenThreads -losg -losgText -losgDB -losgEarth -losgEarthUtil
   endif
 endif
