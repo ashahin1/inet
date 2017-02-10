@@ -20,6 +20,7 @@
 #include "inet/networklayer/common/L3AddressResolver.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/lifecycle/NodeOperations.h"
+#include "/home/ahmed/or-tools/include/algorithms/hungarian.h"
 
 #include <vector>
 
@@ -280,6 +281,31 @@ void TCPMgmtSrvApp::calcPxAssignments() {
     }
 
     //make sure that we excluded our ssid
+
+    std::vector<std::vector<double> > cost;
+    hash_map<int, int> direct_assignment;
+    hash_map<int, int> reverse_assignment;
+
+    vector<double> row1;
+    vector<double> row2;
+    vector<double> row3;
+    for (int ii = 0; ii < 3; ii++) {
+        row1.push_back(ii + 0.5);
+        row2.push_back(ii + 1.5);
+        row3.push_back(ii + 2.5);
+    }
+
+    cost.push_back(row1);
+    cost.push_back(row2);
+    cost.push_back(row3);
+
+    operations_research::MinimizeLinearAssignment(cost, &direct_assignment,
+            &reverse_assignment);
+
+    EV_DETAIL << "Assignments Calculated As Follows:\n";
+    for (auto& da : direct_assignment) {
+        EV_DETAIL << "\n" << da.first << "\t" << da.second;
+    }
 }
 
 } /* namespace inet */

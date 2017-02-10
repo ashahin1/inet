@@ -57,6 +57,12 @@ endif
 # disable anoying "... hides overloaded virtual function" warning
 CFLAGS += -Wno-overloaded-virtual
 
+############  Ahmed Shahin ===== 10 Feb, 2017  #######################
+# Support for integraring Google or-tools with INetFramework
+
+CFLAGS += -DUSE_GLOP -DUSE_CLP -DUSE_CBC -DUSE_BOP -I/home/ahmed/or-tools/include 
+LIBS += -lz -lrt -lpthread -lortools 
+
 #########################################################################
 # precompiled header support for GCC and CLANG
 
