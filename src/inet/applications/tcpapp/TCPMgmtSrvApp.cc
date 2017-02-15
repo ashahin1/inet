@@ -279,7 +279,7 @@ void TCPMgmtSrvApp::calcPxAssignments() {
                 ssidCoverage[ssid] = ++ssidCoverage[ssid];
             }
         }
-    }
+    }        // note that the values stored in this map are not utilized yet
 
     map<int, int> membersCoverage;
 
@@ -292,7 +292,7 @@ void TCPMgmtSrvApp::calcPxAssignments() {
             membersCoverage[hbMap.first] = ssidCount;
         }
 
-    }
+    }        // note that the values stored in this map are not utilized yet
 
     vector<string> ssidList;
     vector<int> membersList;
@@ -300,14 +300,18 @@ void TCPMgmtSrvApp::calcPxAssignments() {
     EV_DETAIL << "\nSSID Coverage is As Follows:\n";
     for (auto& sc : ssidCoverage) {
         EV_DETAIL << "\n" << sc.first << "\t" << sc.second;
+        //Populate the ssid list with all known GOs around
         ssidList.push_back(sc.first);
     }
+
     EV_DETAIL << "\nMembers Coverage is As Follows:\n";
     for (auto& mc : membersCoverage) {
         EV_DETAIL << "\n" << mc.first << "\t" << mc.second;
+        //Populate the members list with all members that can reach other groups
         membersList.push_back(mc.first);
     }
 
+    //Declare some variables that are needed by the Munkres algorithm implementation
     vector<vector<double> > cost;
     hash_map<int, int> direct_assignment;
     hash_map<int, int> reverse_assignment;
@@ -338,17 +342,22 @@ void TCPMgmtSrvApp::calcPxAssignments() {
 
             if (found) {
                 double gm_cost = 0.0f;
+                //We will use the same rank that we used before
+                //to select the GOs, which is already available
+                //from the previous step
                 DeviceInfo *devInfo = &((*peersInfo)[mID]);
                 gm_cost = clpBrd->getRank(*devInfo);
 
                 //TODO: Adjust the cost
+
+                //Note here that the cost is represented by the rank
+                //The rank by definition is better when higher
                 tmpRow.push_back(gm_cost);
 
             } else {
-                //We should here add a cost of INFINITY to indicate that
+                //We should here add a cost of -INFINITY to indicate that
                 //the current GM cannot reach the current SSID
-
-                tmpRow.push_back(INFINITY);
+                tmpRow.push_back(-INFINITY);
             }
         }
         //Add the prepared row to the cost matrix
@@ -361,13 +370,18 @@ void TCPMgmtSrvApp::calcPxAssignments() {
         }
     }
 
-    operations_research::MinimizeLinearAssignment(cost, &direct_assignment,
+    //Now we start the Munkres (Hungarian) algorithm
+    //We need to maximize the cost of assignments in this case
+    operations_research::MaximizeLinearAssignment(cost, &direct_assignment,
             &reverse_assignment);
 
     EV_DETAIL << "\nReal Assignments Are As Follows:\n";
     for (auto& da : direct_assignment) {
-        EV_DETAIL << "\n" << membersList[da.first] << "\t"
-                         << ssidList[da.second];
+        EV_DETAIL << "\n" << membersList[da.first] << " ("
+                         << cSimulation::getActiveSimulation()->getModule(
+                                 membersList[da.first])->getFullName() << ") "
+                         << "\t" << ssidList[da.second];
+        //Adjust the assignment map, so it can be used to send assignments
         pxAssignment[ssidList[da.second]] = membersList[da.first];
     }
 }

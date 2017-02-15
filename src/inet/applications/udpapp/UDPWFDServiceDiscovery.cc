@@ -202,9 +202,14 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             //switch dhcp client to wlan3 intf
             if (!isGroupOwner) {
                 if (!noGoAround()) {
-                    //changeProxySSID("xyz"); //TODO: set the ssid from the tcp app
-                    turnProxyInterfaceOn();
-                    switchDhcpClientToProxy();
+                    //changeProxySSID("xyz");
+                    //Check if an ssid is assigned by the GO.
+                    //if no ssid, it means that this GM is not working as a proxy.
+                    if (clpBrd->getProxySsid().compare("") != 0) {
+                        changeProxySSID(clpBrd->getProxySsid().c_str());
+                        turnProxyInterfaceOn();
+                        switchDhcpClientToProxy();
+                    }
                 }
             }
 
@@ -560,7 +565,8 @@ double UDPWFDServiceDiscovery::getRank(bool isCharging, double Capacity,
 }
 
 double UDPWFDServiceDiscovery::getRank(DeviceInfo pInfo) {
-    return clpBrd->getRank(pInfo.isCharging, pInfo.batteryCapacity, pInfo.batteryLevel);
+    return clpBrd->getRank(pInfo.isCharging, pInfo.batteryCapacity,
+            pInfo.batteryLevel);
 }
 
 double UDPWFDServiceDiscovery::getMyRank() {

@@ -81,6 +81,14 @@ double ClipBoard::getRank(DeviceInfo pInfo) {
     return getRank(pInfo.isCharging, pInfo.batteryCapacity, pInfo.batteryLevel);
 }
 
+const string& ClipBoard::getProxySsid() const {
+    return proxy_ssid;
+}
+
+void ClipBoard::setProxySsid(const string& proxySsid) {
+    proxy_ssid = proxySsid;
+}
+
 void ClipBoard::refreshDisplay() const {
     // refresh statistics
     char buf[32];

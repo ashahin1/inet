@@ -226,9 +226,11 @@ void TCPMgmtClientApp::socketDataArrived(int connId, void* ptr, cPacket* msg,
             //Change the ssid of the pxNic to the one given in the msg
             HeartBeatRecord hbRec = hbMap[myHeartBeatRecord.devId];
             const char *ssid = hbRec.reachableSSIDs[0].c_str();
-            if (pxNic != nullptr)
+            //Move the assignment back to the udp_sd_app
+            /*if (pxNic != nullptr)
                 pxNic->getSubmodule("agent")->par("default_ssid").setStringValue(
-                        ssid);
+                        ssid);*/
+            clpBrd->setProxySsid(ssid);
         }
         nextMsgIsPxAssignment = hbMsg->getNextIsProxyAssignment();
     }

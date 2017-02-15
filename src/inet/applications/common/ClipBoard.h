@@ -56,6 +56,8 @@ protected:
     HeartBeatMap *heartBeatMapServer;
     DevicesInfo *peersInfo;
 
+    string proxy_ssid = "";
+
     double rankAlpha;
     double rankBeta;
     double rankGamma;
@@ -71,6 +73,9 @@ public:
     void setPeersInfo(DevicesInfo* peersInfo);
     double getRank(bool isCharging, double Capacity, double level);
     double getRank(DeviceInfo pInfo);
+    const string& getProxySsid() const;
+    void setProxySsid(const string& proxySsid = "");
+
 protected:
     virtual void initialize(int stage) override;
     virtual void refreshDisplay() const override;
