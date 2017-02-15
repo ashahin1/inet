@@ -53,7 +53,13 @@ void TCPMgmtClientApp::initialize(int stage) {
 
         device = getContainingNode(this);
         sdNic = device->getModuleByPath(par("sdNicName").stringValue());
+        p2pNic = device->getModuleByPath(par("p2pNicName").stringValue());
         pxNic = device->getModuleByPath(par("pxNicName").stringValue());
+
+        if (p2pNic != nullptr) {
+            myGoSSID =
+                    p2pNic->getSubmodule("agent")->par("default_ssid").stringValue();
+        }
 
         WATCH(myHeartBeatRecord.ipAddress);
     }
@@ -262,7 +268,10 @@ void TCPMgmtClientApp::initMyHeartBeatRecord() {
         for (auto& pf : *pInfo) {
             //check if it is a GO (has ssid)
             if (pf.second.ssid.compare("") != 0) {
-                myHeartBeatRecord.reachableSSIDs.push_back(pf.second.ssid);
+                //make sure that we do not include the SSID of our GO
+                if (pf.second.ssid.compare(myGoSSID) != 0) {
+                    myHeartBeatRecord.reachableSSIDs.push_back(pf.second.ssid);
+                }
             }
         }
     }

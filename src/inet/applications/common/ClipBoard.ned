@@ -21,5 +21,9 @@ package inet.applications.common;
 simple ClipBoard
 {
     parameters:
+        double rankAlpha = default(0.33);
+        double rankBeta = default(0.33);
+        double rankGamma = default(0.34);
+        double maxBatteryCapacity = default(8000);
         @display("i=block/table");
 }

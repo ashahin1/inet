@@ -35,6 +35,8 @@ protected:
 
     cMessage *ttlMsg = nullptr;
 
+    DevicesInfo *peersInfo;
+
     HeartBeatMap heartBeatMap;
     HeartBeatRecord myHeartBeatRecord;
     PxAssignment pxAssignment;

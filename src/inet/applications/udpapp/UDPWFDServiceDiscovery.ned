@@ -36,10 +36,10 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
         string proxyNicName = default(".wlan[3]");
         int maxSubnetX = default(254);
         int maxSubnetY = default(254);
-        double rankAlpha = default(0.33);
-        double rankBeta = default (0.33);
-        double rankGamma = default (0.34);
-        double maxBatteryCapacity = default(8000);
+//        double rankAlpha = default(0.33);
+//        double rankBeta = default (0.33);
+//        double rankGamma = default (0.34);
+//        double maxBatteryCapacity = default(8000);
         double declareGoPeriod @unit(s) = default(this.sendInterval * 10);
         double selectGoPeriod @unit(s) = default(this.declareGoPeriod);
         double switchDhcpPeriod @unit(s) = default (this.selectGoPeriod * 2);

@@ -159,6 +159,7 @@ void TCPMgmtSrvApp::sendBack(cMessage* msg) {
     if (hbPeerMsg != nullptr) {
         //dup to avoid filling the controlInfo again in case of Proxy assignment
         HeartBeatMsg *pxAssignMsg = hbPeerMsg->dup();
+        pxAssignMsg->setControlInfo(hbPeerMsg->getControlInfo()->dup());
         //First get the original sender Id
         int prevSenderID = getHbMsgSenderID(pxAssignMsg);
         //We won't send the assignment if the device is not a candidate
@@ -247,6 +248,7 @@ HeartBeatMap TCPMgmtSrvApp::getPxAssignmentMap(int devID) {
     if (heartBeatMap.count(devID) > 0) {
         HeartBeatRecord hbRec = heartBeatMap[devID];
 
+        //Insert the ssid of the group that is chosen for this GM
         hbRec.reachableSSIDs.clear();
         for (auto& pa : pxAssignment) {
             if (pa.second == devID) {
@@ -262,6 +264,7 @@ HeartBeatMap TCPMgmtSrvApp::getPxAssignmentMap(int devID) {
 
 void TCPMgmtSrvApp::calcPxAssignments() {
     pxAssignment.clear();
+    peersInfo = clpBrd->getPeersInfo();
     //Do the actual calculation
     map<string, int> ssidCoverage;
 
@@ -269,42 +272,103 @@ void TCPMgmtSrvApp::calcPxAssignments() {
     for (auto& hbMap : heartBeatMap) {
         for (int i = 0; i < hbMap.second.reachableSSIDs.size(); i++) {
             string ssid = hbMap.second.reachableSSIDs[i];
-            //make sure that we excluded our ssid
-            if (ssid.compare(mySSID) != 0) {
-                if (ssidCoverage.count(ssid) == 0) {
-                    ssidCoverage[ssid] = 1;
-                } else {
-                    ssidCoverage[ssid] = ssidCoverage[ssid]++;
-                }
+
+            if (ssidCoverage.count(ssid) == 0) {
+                ssidCoverage[ssid] = 1;
+            } else {
+                ssidCoverage[ssid] = ++ssidCoverage[ssid];
             }
         }
     }
 
-    //make sure that we excluded our ssid
+    map<int, int> membersCoverage;
 
-    std::vector<std::vector<double> > cost;
+    //build a map that have the number of SSIDs that each GM covers
+    for (auto& hbMap : heartBeatMap) {
+        //Exclude the GO itself from being added to the map
+        if (hbMap.first != myHeartBeatRecord.devId) {
+            int ssidCount = hbMap.second.reachableSSIDs.size();
+
+            membersCoverage[hbMap.first] = ssidCount;
+        }
+
+    }
+
+    vector<string> ssidList;
+    vector<int> membersList;
+
+    EV_DETAIL << "\nSSID Coverage is As Follows:\n";
+    for (auto& sc : ssidCoverage) {
+        EV_DETAIL << "\n" << sc.first << "\t" << sc.second;
+        ssidList.push_back(sc.first);
+    }
+    EV_DETAIL << "\nMembers Coverage is As Follows:\n";
+    for (auto& mc : membersCoverage) {
+        EV_DETAIL << "\n" << mc.first << "\t" << mc.second;
+        membersList.push_back(mc.first);
+    }
+
+    vector<vector<double> > cost;
     hash_map<int, int> direct_assignment;
     hash_map<int, int> reverse_assignment;
 
-    vector<double> row1;
-    vector<double> row2;
-    vector<double> row3;
-    for (int ii = 0; ii < 3; ii++) {
-        row1.push_back(ii + 0.5);
-        row2.push_back(ii + 1.5);
-        row3.push_back(ii + 2.5);
+    //Preparing the cost matrix
+    EV_DETAIL << "\nCost Matrix is As Follows:\n";
+    //Header
+    for (int j = 0; j < ssidList.size(); j++) {
+
+        EV_DETAIL << "\t" << ssidList[j];
     }
 
-    cost.push_back(row1);
-    cost.push_back(row2);
-    cost.push_back(row3);
+    //loop through all GMs that have nearby groups
+    for (const int& mID : membersList) {
+        //Create a row for the cost matrix
+        vector<double> tmpRow;
+        //loop through each possible ssid
+        for (const string& gSsid : ssidList) {
+            //make sure that the current GM can reach the current ssid
+            HeartBeatRecord *hbRec = &heartBeatMap[mID];
+            bool found = false;
+            for (int i = 0; i < hbRec->reachableSSIDs.size(); i++) {
+                if (hbRec->reachableSSIDs[i].compare(gSsid) == 0) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found) {
+                double gm_cost = 0.0f;
+                DeviceInfo *devInfo = &((*peersInfo)[mID]);
+                gm_cost = clpBrd->getRank(*devInfo);
+
+                //TODO: Adjust the cost
+                tmpRow.push_back(gm_cost);
+
+            } else {
+                //We should here add a cost of INFINITY to indicate that
+                //the current GM cannot reach the current SSID
+
+                tmpRow.push_back(INFINITY);
+            }
+        }
+        //Add the prepared row to the cost matrix
+        cost.push_back(tmpRow);
+
+        //Print row
+        EV_DETAIL << "\n" << mID;
+        for (int iii = 0; iii < tmpRow.size(); ++iii) {
+            EV_DETAIL << "\t\t" << tmpRow[iii];
+        }
+    }
 
     operations_research::MinimizeLinearAssignment(cost, &direct_assignment,
             &reverse_assignment);
 
-    EV_DETAIL << "Assignments Calculated As Follows:\n";
+    EV_DETAIL << "\nReal Assignments Are As Follows:\n";
     for (auto& da : direct_assignment) {
-        EV_DETAIL << "\n" << da.first << "\t" << da.second;
+        EV_DETAIL << "\n" << membersList[da.first] << "\t"
+                         << ssidList[da.second];
+        pxAssignment[ssidList[da.second]] = membersList[da.first];
     }
 }
 

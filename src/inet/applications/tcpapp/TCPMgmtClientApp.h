@@ -25,11 +25,13 @@ namespace inet {
 class TCPMgmtClientApp: public TCPBasicClientApp {
 protected:
     string status = "";
+    string myGoSSID = "";
     bool nextMsgIsPxAssignment = false;
 
     ClipBoard *clpBrd = nullptr;
     IInterfaceTable *ift = nullptr;
     cModule *sdNic = nullptr;
+    cModule *p2pNic = nullptr;
     cModule *pxNic = nullptr;
     cModule *device = nullptr;
 

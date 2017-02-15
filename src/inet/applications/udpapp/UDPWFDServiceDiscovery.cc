@@ -123,7 +123,9 @@ void UDPWFDServiceDiscovery::refreshDisplay() const {
     }
 
     char buff[100];
-    sprintf(buff, "r=%f, pGo=%d, id=%d", const_cast<UDPWFDServiceDiscovery*>(this)->getMyRank(), myInfo.proposedGO, myInfo.deviceId);
+    sprintf(buff, "r=%f, pGo=%d, id=%d",
+            const_cast<UDPWFDServiceDiscovery*>(this)->getMyRank(),
+            myInfo.proposedGO, myInfo.deviceId);
     sprintf(buf2, "%s\n%s", buf2, buff);
 
     device->getDisplayString().setTagArg("t", 0, buf2);
@@ -162,7 +164,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             //  declare my self as GO to start sending SAP info
             //
             updateMyInfo(true);
-            isGroupOwner = (myInfo.deviceId == myInfo.proposedGO);//getBestRankDevice() == nullptr;
+            isGroupOwner = (myInfo.deviceId == myInfo.proposedGO); //getBestRankDevice() == nullptr;
             if (isGroupOwner) {
                 if (subnetConflicting())
                     getConflictFreeSubnet();
@@ -554,17 +556,11 @@ void UDPWFDServiceDiscovery::addSapInfoToPayLoad(
 
 double UDPWFDServiceDiscovery::getRank(bool isCharging, double Capacity,
         double level) {
-    double rank = 0.0f;
-    rank += (isCharging ? par("rankAlpha").doubleValue() : 0);
-    rank += (Capacity * 1.0f / par("maxBatteryCapacity").doubleValue())
-            * par("rankBeta").doubleValue();
-    rank += level * par("rankGamma").doubleValue();
-
-    return rank;
+    return clpBrd->getRank(isCharging, Capacity, level);
 }
 
 double UDPWFDServiceDiscovery::getRank(DeviceInfo pInfo) {
-    return getRank(pInfo.isCharging, pInfo.batteryCapacity, pInfo.batteryLevel);
+    return clpBrd->getRank(pInfo.isCharging, pInfo.batteryCapacity, pInfo.batteryLevel);
 }
 
 double UDPWFDServiceDiscovery::getMyRank() {

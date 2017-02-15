@@ -55,6 +55,11 @@ protected:
     HeartBeatMap *heartBeatMapClient;
     HeartBeatMap *heartBeatMapServer;
     DevicesInfo *peersInfo;
+
+    double rankAlpha;
+    double rankBeta;
+    double rankGamma;
+    double maxBatteryCapacity;
 public:
     ClipBoard();
     virtual ~ClipBoard();
@@ -64,6 +69,8 @@ public:
     void setHeartBeatMapServer(HeartBeatMap *heartBeatMap);
     DevicesInfo *getPeersInfo();
     void setPeersInfo(DevicesInfo* peersInfo);
+    double getRank(bool isCharging, double Capacity, double level);
+    double getRank(DeviceInfo pInfo);
 protected:
     virtual void initialize(int stage) override;
     virtual void refreshDisplay() const override;

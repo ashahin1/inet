@@ -1,0 +1,1 @@
+ffmpeg -r 30 -f image2 -i "frames/General#0_%04d.png" -vcodec libx264 -crf 0 -preset veryslow -qp 0 -pix_fmt yuv444p "General#0.mkv"

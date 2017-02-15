@@ -38,6 +38,11 @@ void ClipBoard::initialize(int stage) {
     WATCH(peersInfo);
     WATCH(protocolMsg);
     WATCH(*isGroupOwner);
+
+    rankAlpha = par("rankAlpha").doubleValue();
+    rankBeta = par("rankBeta").doubleValue();
+    rankGamma = par("rankGamma").doubleValue();
+    maxBatteryCapacity = par("maxBatteryCapacity").doubleValue();
 }
 
 HeartBeatMap* ClipBoard::getHeartBeatMapClient() {
@@ -62,6 +67,18 @@ DevicesInfo* ClipBoard::getPeersInfo() {
 
 void ClipBoard::setPeersInfo(DevicesInfo* peersInfo) {
     this->peersInfo = peersInfo;
+}
+
+double ClipBoard::getRank(bool isCharging, double Capacity, double level) {
+    double rank = 0.0f;
+    rank += (isCharging ? rankAlpha : 0);
+    rank += (Capacity * 1.0f / maxBatteryCapacity) * rankBeta;
+    rank += level * rankGamma;
+    return rank;
+}
+
+double ClipBoard::getRank(DeviceInfo pInfo) {
+    return getRank(pInfo.isCharging, pInfo.batteryCapacity, pInfo.batteryLevel);
 }
 
 void ClipBoard::refreshDisplay() const {
