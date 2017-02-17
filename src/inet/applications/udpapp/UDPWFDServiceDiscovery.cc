@@ -140,8 +140,18 @@ void UDPWFDServiceDiscovery::resetDevice() {
     peersInfo.clear();
     //myInfo = DeviceInfo();
     updateMyInfo(false);
+
     //turn other modules off (dhcp, wlan, etc)
     turnModulesOff();
+
+    //Make sure we clear the heartbeatmaps that are in the TCPMgmtSrvApp and the TCPMgmtClientApp
+    //This should be done by the tcp apps themselves, but due to the inability of the server app
+    //to do lifecysles operations in the time being, I sticked with this solution
+    if(clpBrd != nullptr){
+        clpBrd->getHeartBeatMapClient()->clear();
+        clpBrd->getHeartBeatMapServer()->clear();
+    }
+
 }
 
 void UDPWFDServiceDiscovery::processStart() {
@@ -156,6 +166,9 @@ void UDPWFDServiceDiscovery::processStart() {
 void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
     if (msg->isSelfMessage()) {
         if (msg->getKind() == DECLARE_GO) {
+            //clear the ips from the previous run (in case this is a new run after teardown)
+            clearInterfaceIpAddress("groupInterface");
+            clearInterfaceIpAddress("proxyInterface");
             //Compare the rank to the collected ones
             //if my rank is the best
             //  start the wlan1 (AP)
@@ -288,8 +301,10 @@ void UDPWFDServiceDiscovery::sendPacket() {
         //We her check the scheduled message that define the next phase
         //Once the Go selection is done we schedule the message for Setting the proxy
         //Of course this means that we need here to check that the message kind is SET_PROXY_DHCP
+        //In addition, we need to make sure that no packets are send after proxy selection and until
+        //the teardown signal is sent, so we need to check for PROTOCOL_TEARDOWN msg kind also.
         if (protocolMsg != nullptr)
-            if (protocolMsg->getKind() == SET_PROXY_DHCP)
+            if ((protocolMsg->getKind() == SET_PROXY_DHCP) || (protocolMsg->getKind() == PROTOCOL_TEARDOWN))
                 return;
 
         //Send discovery requests per the defined schedule
@@ -383,6 +398,28 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
     }
     delete pk;
     numReceived++;
+}
+
+
+void UDPWFDServiceDiscovery::clearInterfaceIpAddress(string ifNamePar) {
+    IInterfaceTable *ift = getModuleFromPar<IInterfaceTable>(
+            par("interfaceTableModule"), this);
+    const char *ifName = par(ifNamePar.c_str()).stringValue();
+
+    InterfaceEntry *ie = nullptr;
+
+    if (strlen(ifName) > 0) {
+        ie = ift->getInterfaceByName(ifName);
+        if (ie == nullptr)
+            throw cRuntimeError("Interface \"%s\" does not exist",
+                    ifName);
+
+        IPv4Address ip;
+        IPv4Address mask;
+
+        ie->ipv4Data()->setIPAddress(ip);
+        ie->ipv4Data()->setNetmask(mask);
+    }
 }
 
 void UDPWFDServiceDiscovery::turnModulesOff() {

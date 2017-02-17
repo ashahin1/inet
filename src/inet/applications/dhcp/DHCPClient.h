@@ -46,7 +46,7 @@ class INET_API DHCPClient : public cSimpleModule, public cListener, public ILife
     enum ClientState {
         IDLE, INIT, INIT_REBOOT, REBOOTING, SELECTING, REQUESTING, BOUND, RENEWING, REBINDING
     };
-
+    bool socketOpened = false;
     // parameters
     int serverPort = -1;
     int clientPort = -1;

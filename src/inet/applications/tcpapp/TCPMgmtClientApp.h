@@ -60,6 +60,7 @@ private:
     void decreasePeersTtl();
     int removeZeroTtl();
     void setConnectAddressToGoIP();
+    void abort();
 };
 
 } /* namespace inet */

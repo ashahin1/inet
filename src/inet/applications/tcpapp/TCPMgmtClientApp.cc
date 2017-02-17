@@ -56,11 +56,6 @@ void TCPMgmtClientApp::initialize(int stage) {
         p2pNic = device->getModuleByPath(par("p2pNicName").stringValue());
         pxNic = device->getModuleByPath(par("pxNicName").stringValue());
 
-        if (p2pNic != nullptr) {
-            myGoSSID =
-                    p2pNic->getSubmodule("agent")->par("default_ssid").stringValue();
-        }
-
         WATCH(myHeartBeatRecord.ipAddress);
     }
 }
@@ -88,9 +83,11 @@ bool TCPMgmtClientApp::handleOperationStage(LifecycleOperation *operation,
     else if (dynamic_cast<NodeShutdownOperation *>(operation)) {
         if ((NodeShutdownOperation::Stage)stage == NodeShutdownOperation::STAGE_APPLICATION_LAYER) {
             cancelEvent(timeoutMsg);
-            if (socket.getState() == TCPSocket::CONNECTED || socket.getState() == TCPSocket::CONNECTING || socket.getState() == TCPSocket::PEER_CLOSED)
-            close();
-            // TODO: wait until socket is closed
+            if (socket.getState() == TCPSocket::CONNECTED || socket.getState() == TCPSocket::CONNECTING || socket.getState() == TCPSocket::PEER_CLOSED) {
+                //close();
+                abort();
+                // TODO: wait until socket is closed
+            }
         }
     }
     else if (dynamic_cast<NodeCrashOperation *>(operation)) {
@@ -116,6 +113,13 @@ void TCPMgmtClientApp::handleMessage(cMessage* msg) {
     } else {
         TCPAppBase::handleMessage(msg);
     }
+}
+
+void TCPMgmtClientApp::abort() {
+    setStatusString("aborting");
+    EV_INFO << "issuing ABORT command\n";
+    socket.abort();
+    emit(connectSignal, -1L);
 }
 
 void TCPMgmtClientApp::refreshDisplay() const {
@@ -228,8 +232,8 @@ void TCPMgmtClientApp::socketDataArrived(int connId, void* ptr, cPacket* msg,
             const char *ssid = hbRec.reachableSSIDs[0].c_str();
             //Move the assignment back to the udp_sd_app
             /*if (pxNic != nullptr)
-                pxNic->getSubmodule("agent")->par("default_ssid").setStringValue(
-                        ssid);*/
+             pxNic->getSubmodule("agent")->par("default_ssid").setStringValue(
+             ssid);*/
             clpBrd->setProxySsid(ssid);
         }
         nextMsgIsPxAssignment = hbMsg->getNextIsProxyAssignment();
@@ -262,6 +266,11 @@ void TCPMgmtClientApp::initMyHeartBeatRecord() {
             myHeartBeatRecord.ipAddress = myIP.str();
         }
         myHeartBeatRecord.macAddress = ie->getMacAddress().str();
+    }
+
+    if (p2pNic != nullptr) {
+        myGoSSID =
+                p2pNic->getSubmodule("agent")->par("default_ssid").stringValue();
     }
 
     myHeartBeatRecord.reachableSSIDs.clear();

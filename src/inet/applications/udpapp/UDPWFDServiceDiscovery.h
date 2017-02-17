@@ -121,6 +121,7 @@ private:
             ServiceDiscoveryResponseSapInfo* respSapInfo);
     void resetDevice();
     bool myProposedGoNeedsUpdate();
+    void clearInterfaceIpAddress(string ifNamePar);
 };
 
 } /* namespace inet */
