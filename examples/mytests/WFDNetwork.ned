@@ -15,18 +15,20 @@
 
 package inet.examples.mytests;
 
+import inet.common.figures.DelegateSignalConfigurator;
 import inet.common.lifecycle.LifecycleController;
 import inet.common.scenario.ScenarioManager;
-import inet.common.figures.DelegateSignalConfigurator;
 import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
 import inet.node.inet.WFDHost;
-import inet.physicallayer.ieee80211.packetlevel.Ieee80211ScalarRadioMedium;
+import inet.physicallayer.contract.packetlevel.IRadioMedium;
 import inet.visualizer.integrated.IntegratedCanvasVisualizer;
+
 
 //Wi-Fi Direct Network
 network WFDNetwork
 {
     int deviceCount = default(3);
+    string mediumType = default("Ieee80211ScalarRadioMedium");
 
     @display("bgg=100,2,grey95;bgl=5");
     @figure[title](type=label; pos=0,-1; anchor=sw; color=darkblue);
@@ -41,7 +43,7 @@ network WFDNetwork
         configurator: IPv4NetworkConfigurator {
             @display("p=68.544,66.528");
         }
-        radioMedium: Ieee80211ScalarRadioMedium {
+        radioMedium: <mediumType> like IRadioMedium {
             @display("p=67.536,19.152");
         }
         visualizer: IntegratedCanvasVisualizer {
@@ -50,7 +52,5 @@ network WFDNetwork
         figureHelper: DelegateSignalConfigurator {
             @display("p=68.544,169.34401");
         }
-        device[deviceCount]: WFDHost{
-            //@display("p=100,100;r=,,#000040");
-        }
+        device[deviceCount]: WFDHost;
 }

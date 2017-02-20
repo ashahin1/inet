@@ -35,7 +35,10 @@ TCPMgmtClientApp::TCPMgmtClientApp() {
 
 TCPMgmtClientApp::~TCPMgmtClientApp() {
     // TODO Auto-generated destructor stub
-    cancelAndDelete(ttlMsg);
+    if (ttlMsg != nullptr) {
+        cancelAndDelete(ttlMsg);
+        //delete ttlMsg;
+    }
 }
 
 void TCPMgmtClientApp::initialize(int stage) {
@@ -75,8 +78,11 @@ bool TCPMgmtClientApp::handleOperationStage(LifecycleOperation *operation,
                 initMyHeartBeatRecord();
                 heartBeatMap.clear();
 
-                ttlMsg = new cMessage("ttlMsg");
-                ttlMsg->setKind(TTL_MSG);
+                if(!ttlMsg) {
+                    ttlMsg = new cMessage("ttlMsg");
+                    ttlMsg->setKind(TTL_MSG);
+                }
+                scheduleAt(simTime() + par("decTtlPeriod"), ttlMsg);
             }
         }
     }
@@ -86,6 +92,12 @@ bool TCPMgmtClientApp::handleOperationStage(LifecycleOperation *operation,
             if (socket.getState() == TCPSocket::CONNECTED || socket.getState() == TCPSocket::CONNECTING || socket.getState() == TCPSocket::PEER_CLOSED) {
                 //close();
                 abort();
+                if(ttlMsg != nullptr) {
+                    /*if(ttlMsg->isScheduled()) {
+                     cancelAndDelete(ttlMsg);
+                     }*/
+                    cancelEvent(ttlMsg);
+                }
                 // TODO: wait until socket is closed
             }
         }
@@ -286,6 +298,12 @@ void TCPMgmtClientApp::initMyHeartBeatRecord() {
             }
         }
     }
+    //dump reachable ssids
+    /*EV_DETAIL << "\n  id->" << myHeartBeatRecord.devId << " can reach ";
+     for (const string& ssid : myHeartBeatRecord.reachableSSIDs) {
+     EV_DETAIL << "  " << ssid;
+     }*/
+    //
     myHeartBeatRecord.ttl = par("hb_ttl");
 }
 

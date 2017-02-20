@@ -37,7 +37,17 @@ TCPMgmtSrvApp::TCPMgmtSrvApp() {
 
 TCPMgmtSrvApp::~TCPMgmtSrvApp() {
     // TODO Auto-generated destructor stub
-    cancelAndDelete(ttlMsg);
+    if (ttlMsg != nullptr) {
+        cMessage *msg = nullptr;
+        if ((msg = dynamic_cast<cMessage *>(ttlMsg)) != nullptr) {
+            if (msg->isScheduled() && msg->isSelfMessage()) {
+                cancelAndDelete(ttlMsg);
+            } else {
+                delete msg;
+            }
+        }
+        //delete ttlMsg;
+    }
 }
 
 void TCPMgmtSrvApp::initialize(int stage) {
@@ -90,6 +100,8 @@ void TCPMgmtSrvApp::sendOrSchedule(cMessage* msg, simtime_t delay) {
     if (!ttlMsg) {
         ttlMsg = new cMessage("ttlMsg");
         ttlMsg->setKind(TTL_MSG);
+
+        scheduleAt(simTime() + par("decTtlPeriod"), ttlMsg);
     }
 
     initMyHeartBeatRecord();

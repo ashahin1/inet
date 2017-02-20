@@ -371,7 +371,8 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
         if (isGroupOwner || (protocolMsg->getKind() == DECLARE_GO)) {
             sendServiceDiscoveryPacket(false, true, sdReq->getOrgSendTime());
         }
-        if (isGroupOwner) {
+        //We need to halt responding with SapInfo until we make sure that other devices are selecting their Groups
+        if (isGroupOwner && (protocolMsg->getKind() == SELECT_GO)) {
             sendServiceDiscoveryPacket(false, false, sdReq->getOrgSendTime());
         }
         numRequestRcvd++;
