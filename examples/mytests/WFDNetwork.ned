@@ -18,8 +18,9 @@ package inet.examples.mytests;
 import inet.common.figures.DelegateSignalConfigurator;
 import inet.common.lifecycle.LifecycleController;
 import inet.common.scenario.ScenarioManager;
+import inet.common.wfd.GroupStatistics;
 import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
-import inet.node.inet.WFDHost;
+import inet.node.inet.INetworkNode;
 import inet.physicallayer.contract.packetlevel.IRadioMedium;
 import inet.visualizer.integrated.IntegratedCanvasVisualizer;
 
@@ -29,11 +30,17 @@ network WFDNetwork
 {
     int deviceCount = default(3);
     string mediumType = default("Ieee80211ScalarRadioMedium");
+    string wfdHostType = default("WFDHostFull");
+    
+    **.groupStatisticsModule = default(absPath(".groupStatistics"));
+    groupStatistics.numDevices = deviceCount;
+    **.mobility.numHosts = deviceCount;
 
     @display("bgg=100,2,grey95;bgl=5");
     @figure[title](type=label; pos=0,-1; anchor=sw; color=darkblue);
 
     submodules:
+
         scenarioManager: ScenarioManager {
             @display("p=68.544,276.19202");
         }
@@ -52,5 +59,10 @@ network WFDNetwork
         figureHelper: DelegateSignalConfigurator {
             @display("p=68.544,169.34401");
         }
-        device[deviceCount]: WFDHost;
+
+        groupStatistics: GroupStatistics {
+            @display("p=68,331");
+        }
+
+        device[deviceCount]: <wfdHostType> like INetworkNode;
 }

@@ -22,6 +22,7 @@
 #include "inet/applications/udpapp/ServiceDiscoveryPacket_m.h"
 #include "inet/power/base/EnergyStorageBase.h"
 #include "inet/common/lifecycle/LifecycleController.h"
+#include "inet/common/wfd/GroupStatistics.h"
 
 namespace inet {
 
@@ -31,6 +32,7 @@ using namespace ieee80211;
 
 class UDPWFDServiceDiscovery: public UDPBasicApp {
 protected:
+    GroupStatistics *groupStatistics = nullptr;
     ClipBoard *clpBrd = nullptr;
     LifecycleController *lifeCycleCtrl = nullptr;
     int numResponseSent = 0;

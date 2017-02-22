@@ -37,17 +37,7 @@ TCPMgmtSrvApp::TCPMgmtSrvApp() {
 
 TCPMgmtSrvApp::~TCPMgmtSrvApp() {
     // TODO Auto-generated destructor stub
-    if (ttlMsg != nullptr) {
-        cMessage *msg = nullptr;
-        if ((msg = dynamic_cast<cMessage *>(ttlMsg)) != nullptr) {
-            if (msg->isScheduled() && msg->isSelfMessage()) {
-                cancelAndDelete(ttlMsg);
-            } else {
-                delete msg;
-            }
-        }
-        //delete ttlMsg;
-    }
+    cancelAndDelete(ttlMsg);
 }
 
 void TCPMgmtSrvApp::initialize(int stage) {
@@ -70,8 +60,9 @@ void TCPMgmtSrvApp::initialize(int stage) {
         if (apNic != nullptr) {
             mySSID = apNic->getSubmodule("mgmt")->par("ssid").stringValue();
         }
-//        ttlMsg = new cMessage("ttlMsg");
-//        ttlMsg->setKind(TTL_MSG);
+
+        ttlMsg = new cMessage("ttlMsg");
+        ttlMsg->setKind(TTL_MSG);
     }
 }
 
@@ -92,15 +83,14 @@ void TCPMgmtSrvApp::handleMessage(cMessage* msg) {
         }
     } else {
         heartBeatMap.clear();
-        delete msg;
+        if (msg->getKind() != TTL_MSG) {
+            delete msg;
+        }
     }
 }
 
 void TCPMgmtSrvApp::sendOrSchedule(cMessage* msg, simtime_t delay) {
-    if (!ttlMsg) {
-        ttlMsg = new cMessage("ttlMsg");
-        ttlMsg->setKind(TTL_MSG);
-
+    if (!ttlMsg->isScheduled()) {
         scheduleAt(simTime() + par("decTtlPeriod"), ttlMsg);
     }
 

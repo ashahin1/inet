@@ -55,6 +55,8 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
     UDPBasicApp::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
+        groupStatistics = getModuleFromPar<GroupStatistics>(
+                par("groupStatisticsModule"), this);
         clpBrd = getModuleFromPar<ClipBoard>(par("clipBoardModule"), this);
         if (clpBrd != nullptr) {
             clpBrd->setPeersInfo(&this->peersInfo);
@@ -70,7 +72,10 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
                 par("tcpMgmtClientAppName").stringValue());
         sdNic = device->getModuleByPath(par("sdNicName").stringValue());
         apNic = device->getModuleByPath(par("ApNicName").stringValue());
-        apMgmt = dynamic_cast<Ieee80211MgmtAP *>(apNic->getSubmodule("mgmt"));
+        if (apNic != nullptr) {
+            apMgmt =
+                    dynamic_cast<Ieee80211MgmtAP *>(apNic->getSubmodule("mgmt"));
+        }
         p2pNic = device->getModuleByPath(par("p2pNicName").stringValue());
         proxyNic = device->getModuleByPath(par("proxyNicName").stringValue());
 
@@ -110,7 +115,7 @@ void UDPWFDServiceDiscovery::refreshDisplay() const {
 
     char buf2[80];
     if (isGroupOwner) {
-        int numGMs = apMgmt->getNumOfStation();
+        int numGMs = (apMgmt ? apMgmt->getNumOfStation() : 0);
         sprintf(buf2, "GO (%d)", numGMs);
     } else {
         if (isOrphaned) {
@@ -147,9 +152,14 @@ void UDPWFDServiceDiscovery::resetDevice() {
     //Make sure we clear the heartbeatmaps that are in the TCPMgmtSrvApp and the TCPMgmtClientApp
     //This should be done by the tcp apps themselves, but due to the inability of the server app
     //to do lifecysles operations in the time being, I sticked with this solution
-    if(clpBrd != nullptr){
-        clpBrd->getHeartBeatMapClient()->clear();
-        clpBrd->getHeartBeatMapServer()->clear();
+    if (clpBrd != nullptr) {
+        HeartBeatMap* map = clpBrd->getHeartBeatMapClient();
+        if (map)
+            map->clear();
+
+        map = clpBrd->getHeartBeatMapServer();
+        if (map)
+            map->clear();
     }
 
 }
@@ -304,7 +314,8 @@ void UDPWFDServiceDiscovery::sendPacket() {
         //In addition, we need to make sure that no packets are send after proxy selection and until
         //the teardown signal is sent, so we need to check for PROTOCOL_TEARDOWN msg kind also.
         if (protocolMsg != nullptr)
-            if ((protocolMsg->getKind() == SET_PROXY_DHCP) || (protocolMsg->getKind() == PROTOCOL_TEARDOWN))
+            if ((protocolMsg->getKind() == SET_PROXY_DHCP)
+                    || (protocolMsg->getKind() == PROTOCOL_TEARDOWN))
                 return;
 
         //Send discovery requests per the defined schedule
@@ -401,7 +412,6 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
     numReceived++;
 }
 
-
 void UDPWFDServiceDiscovery::clearInterfaceIpAddress(string ifNamePar) {
     IInterfaceTable *ift = getModuleFromPar<IInterfaceTable>(
             par("interfaceTableModule"), this);
@@ -412,8 +422,7 @@ void UDPWFDServiceDiscovery::clearInterfaceIpAddress(string ifNamePar) {
     if (strlen(ifName) > 0) {
         ie = ift->getInterfaceByName(ifName);
         if (ie == nullptr)
-            throw cRuntimeError("Interface \"%s\" does not exist",
-                    ifName);
+            throw cRuntimeError("Interface \"%s\" does not exist", ifName);
 
         IPv4Address ip;
         IPv4Address mask;
@@ -543,6 +552,7 @@ void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
         if (apNic != nullptr) {
             myInfo.ssid =
                     apNic->getSubmodule("mgmt")->par("ssid").stringValue();
+            //Passphrases in INet are not implemented, so keep the key empty for now
             myInfo.key = "";
         }
 

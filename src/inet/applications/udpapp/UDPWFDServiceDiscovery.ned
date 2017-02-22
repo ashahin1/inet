@@ -22,6 +22,7 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
 {    
     parameters:
         string clipBoardModule = default("");
+        string groupStatisticsModule = default("");
         string lifeCycleControllerModule = default("lifecycleController");
         string interface = default("wlan0"); //The interface for sending and receiving the discovery packets
         string apInterface = default("wlan1"); //The interface for GO operations

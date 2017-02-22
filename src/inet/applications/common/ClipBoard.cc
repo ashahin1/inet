@@ -92,8 +92,10 @@ void ClipBoard::setProxySsid(const string& proxySsid) {
 void ClipBoard::refreshDisplay() const {
     // refresh statistics
     char buf[32];
-    sprintf(buf, "HBC:%lu  HBS:%lu  PI:%lu", heartBeatMapClient->size(),
-            heartBeatMapServer->size(), peersInfo->size());
+    sprintf(buf, "HBC:%lu  HBS:%lu  PI:%lu",
+            (heartBeatMapClient ? heartBeatMapClient->size() : 0),
+            (heartBeatMapServer ? heartBeatMapServer->size() : 0),
+            (peersInfo ? peersInfo->size() : 0));
     getDisplayString().setTagArg("t", 0, buf);
 }
 

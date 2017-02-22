@@ -82,7 +82,9 @@ bool TCPMgmtClientApp::handleOperationStage(LifecycleOperation *operation,
                     ttlMsg = new cMessage("ttlMsg");
                     ttlMsg->setKind(TTL_MSG);
                 }
-                scheduleAt(simTime() + par("decTtlPeriod"), ttlMsg);
+                if (!ttlMsg->isScheduled()) {
+                    scheduleAt(simTime() + par("decTtlPeriod"), ttlMsg);
+                }
             }
         }
     }
@@ -174,8 +176,10 @@ void TCPMgmtClientApp::handleTimer(cMessage* msg) {
 
         TCPBasicClientApp::handleTimer(msg);
     } else if (msg->getKind() == MSGKIND_SEND) {
-        sendRequest();
-        numRequestsToSend--;
+        if (socket.getState() != socket.LOCALLY_CLOSED) {
+            sendRequest();
+            numRequestsToSend--;
+        }
 
         simtime_t d = simTime() + (simtime_t) par("thinkTime");
         rescheduleOrDeleteTimer(d, MSGKIND_SEND);
