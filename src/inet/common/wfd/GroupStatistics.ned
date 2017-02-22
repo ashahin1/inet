@@ -21,6 +21,13 @@ package inet.common.wfd;
 simple GroupStatistics
 {
     parameters:
-		int numDevices;
+        int numDevices;
+        
+        double sendInterval @unit(s) = default(5s);
+        double declareGoPeriod @unit(s) = default(this.sendInterval * 10);
+        double selectGoPeriod @unit(s) = default(this.declareGoPeriod);
+        double switchDhcpPeriod @unit(s) = default(this.sendInterval * 2);
+        double tearDownPeriod @unit(s) = default(this.switchDhcpPeriod * 2);
+
         @display("i=block/users,black;is=s");
 }

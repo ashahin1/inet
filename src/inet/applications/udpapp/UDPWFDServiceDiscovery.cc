@@ -195,6 +195,11 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                 setApIpAddress();
                 setDhcpServerParams();
                 turnDhcpServerOn();
+
+                //Add an entry for stats collection
+                if (groupStatistics) {
+                    groupStatistics->addGO(myInfo.deviceId, myInfo.ssid);
+                }
             }
 
             protocolMsg->setKind(SELECT_GO);
@@ -211,6 +216,11 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                     switchDhcpClientToGroup();
                     turnDhcpClientOn();
                     turnTcpMgmtClientAppOn();
+
+                    //Add an entry for stats collection
+                    if (groupStatistics) {
+                        groupStatistics->addGM(myInfo.deviceId, bestGo->ssid);
+                    }
                 } else {
                     EV_INFO << "Orphaned Device Found";
                     isOrphaned = true;
@@ -228,10 +238,16 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                     //changeProxySSID("xyz");
                     //Check if an ssid is assigned by the GO.
                     //if no ssid, it means that this GM is not working as a proxy.
-                    if (clpBrd->getProxySsid().compare("") != 0) {
-                        changeProxySSID(clpBrd->getProxySsid().c_str());
+                    string pSsid = clpBrd->getProxySsid();
+                    if (pSsid.compare("") != 0) {
+                        changeProxySSID(pSsid.c_str());
                         turnProxyInterfaceOn();
                         switchDhcpClientToProxy();
+
+                        //Add an entry for stats collection
+                        if (groupStatistics) {
+                            groupStatistics->addPM(myInfo.deviceId, pSsid);
+                        }
                     }
                 }
             }

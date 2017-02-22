@@ -27,18 +27,35 @@ GroupStatistics::GroupStatistics() {
 
 GroupStatistics::~GroupStatistics() {
     // TODO Auto-generated destructor stub
+    cancelAndDelete(validDataMsg);
+    cancelAndDelete(resetMsg);
 }
 
 void GroupStatistics::initialize(int stage) {
     numDevices = par("numDevices");
+    sendInterval = par("sendInterval").doubleValue();
+    declareGoPeriod = par("declareGoPeriod").doubleValue();
+    selectGoPeriod = par("selectGoPeriod").doubleValue();
+    switchDhcpPeriod = par("switchDhcpPeriod").doubleValue();
+    tearDownPeriod = par("tearDownPeriod").doubleValue();
 
     WATCH(goCount);
     WATCH(gmCount);
     WATCH(pmCount);
 
+    validDataMsg = new cMessage("validDataMsg");
+    scheduleAt(
+            simTime() + declareGoPeriod + selectGoPeriod + switchDhcpPeriod
+                    + 0.5, validDataMsg);
+
+    resetMsg = new cMessage("restMsg");
+
 }
 
 void GroupStatistics::refreshDisplay() const {
+    char buf[80];
+    sprintf(buf, "GOs: %d GMs: %d PMs: %d", goCount, gmCount, pmCount);
+    getDisplayString().setTagArg("t", 0, buf);
 }
 
 int GroupStatistics::getGmCount() const {
@@ -66,15 +83,14 @@ void GroupStatistics::addGO(int devId, string ssid) {
         gInfo.devId = devId;
         gInfo.ssid = ssid;
         goInfoMap[devId] = gInfo;
+        goCount++;
     }
-
-    goCount = goInfoMap.size();
 
     //Add/update a cache entry for this GO
     ssidToDevIdMap[ssid] = devId;
 }
 
-void GroupStatistics::addGm(int devId, string goSsid) {
+void GroupStatistics::addGM(int devId, string goSsid) {
     int goDevId = ssidToDevIdMap[goSsid];
 
     vector<int> *aGMs = &goInfoMap[goDevId].associatedGMs;
@@ -83,11 +99,11 @@ void GroupStatistics::addGm(int devId, string goSsid) {
         return;
     } else {
         aGMs->push_back(devId);
-        gmCount = aGMs->size();
+        gmCount++;
     }
 }
 
-void GroupStatistics::addPm(int devId, string goSsid) {
+void GroupStatistics::addPM(int devId, string goSsid) {
     int goDevId = ssidToDevIdMap[goSsid];
 
     vector<int> *aPMs = &goInfoMap[goDevId].associatedPMs;
@@ -96,7 +112,7 @@ void GroupStatistics::addPm(int devId, string goSsid) {
         return;
     } else {
         aPMs->push_back(devId);
-        pmCount = aPMs->size();
+        pmCount++;
     }
 }
 
@@ -107,6 +123,50 @@ void GroupStatistics::clearAll() {
 
     goInfoMap.clear();
     ssidToDevIdMap.clear();
+}
+
+void GroupStatistics::writeGroupStats() {
+    EV_DETAIL << "\n==================Group Statistics======================\n";
+
+    for (auto& gInfo : goInfoMap) {
+        EV_DETAIL << "\nGROUP of:\n" << getModuleNameFromId(gInfo.first) << "\t"
+                         << gInfo.second.ssid;
+
+        EV_DETAIL << "\nGM List: ";
+        for (const int& gmId : gInfo.second.associatedGMs) {
+            EV_DETAIL << getModuleNameFromId(gmId) << ", ";
+        }
+
+        EV_DETAIL << "\nPM List: ";
+        for (const int& pmId : gInfo.second.associatedPMs) {
+            EV_DETAIL << getModuleNameFromId(pmId) << ", ";
+        }
+
+        EV_DETAIL << "\n+++++++++++++++++++++++++++++++++++++++\n";
+    }
+
+    EV_DETAIL
+                     << "\n================End of Group Statistics====================\n";
+}
+
+string GroupStatistics::getModuleNameFromId(int id) {
+    return cSimulation::getActiveSimulation()->getModule(id)->getFullName();
+}
+
+void GroupStatistics::handleMessage(cMessage* msg) {
+    if (msg == validDataMsg) {
+        writeGroupStats();
+
+        scheduleAt(simTime() + tearDownPeriod, resetMsg);
+    } else if (msg == resetMsg) {
+        clearAll();
+
+        scheduleAt(
+                simTime() + declareGoPeriod + selectGoPeriod + switchDhcpPeriod,
+                validDataMsg);
+    } else {
+        delete msg;
+    }
 }
 
 } /* namespace inet */

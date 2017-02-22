@@ -42,24 +42,35 @@ protected:
     int pmCount;
 
     int numDevices;
+    double sendInterval;
+    double declareGoPeriod;
+    double selectGoPeriod;
+    double switchDhcpPeriod;
+    double tearDownPeriod;
+
+    cMessage *validDataMsg = nullptr;
+    cMessage *resetMsg = nullptr;
 
     GoInfoMap goInfoMap;
-    map <string, int> ssidToDevIdMap;//caches the GOs ssids and their id mapping
+    map<string, int> ssidToDevIdMap; //caches the GOs ssids and their id mapping
 
 public:
     GroupStatistics();
     virtual ~GroupStatistics();
     void addGO(int devId, string ssid);
-    void addGm(int devId, string goSsid);
-    void addPm(int devId, string goSsid);
+    void addGM(int devId, string goSsid);
+    void addPM(int devId, string goSsid);
     int getGmCount() const;
     int getGoCount() const;
     int getPmCount() const;
     void clearAll();
+    void writeGroupStats();
+    string getModuleNameFromId(int id);
 
 protected:
     virtual void initialize(int stage) override;
     virtual void refreshDisplay() const override;
+    virtual void handleMessage(cMessage *msg) override;
 };
 
 } /* namespace inet */
