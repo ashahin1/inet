@@ -40,6 +40,7 @@ protected:
     int goCount;
     int gmCount;
     int pmCount;
+    int connectedComponentCount;
 
     int numDevices;
     double sendInterval;
@@ -48,11 +49,16 @@ protected:
     double switchDhcpPeriod;
     double tearDownPeriod;
 
+    //vectors for stats recording
+
+
     cMessage *validDataMsg = nullptr;
     cMessage *resetMsg = nullptr;
 
     GoInfoMap goInfoMap;
     map<string, int> ssidToDevIdMap; //caches the GOs ssids and their id mapping
+    map<int, int> devIdToIndexMap; //Maps devIds to indexes starting from 0 .. noOfNodes-1
+    int curIndex;
 
 public:
     GroupStatistics();
@@ -65,7 +71,10 @@ public:
     int getPmCount() const;
     void clearAll();
     void writeGroupStats();
+    void recordGroupStats();
     string getModuleNameFromId(int id);
+    int getConnectedComponentCount() const;
+    void calcGraphConnectivity();
 
 protected:
     virtual void initialize(int stage) override;

@@ -14,9 +14,13 @@
 // 
 
 #include "inet/common/wfd/GroupStatistics.h"
+#include "/home/ahmed/or-tools/include/graph/connectivity.h"
+
 #include <algorithm>
 
 namespace inet {
+
+using namespace operations_research;
 
 Define_Module(GroupStatistics);
 
@@ -42,6 +46,8 @@ void GroupStatistics::initialize(int stage) {
     WATCH(goCount);
     WATCH(gmCount);
     WATCH(pmCount);
+    WATCH(curIndex);
+    WATCH(connectedComponentCount);
 
     validDataMsg = new cMessage("validDataMsg");
     scheduleAt(
@@ -70,6 +76,10 @@ int GroupStatistics::getPmCount() const {
     return pmCount;
 }
 
+int GroupStatistics::getConnectedComponentCount() const {
+    return connectedComponentCount;
+}
+
 void GroupStatistics::addGO(int devId, string ssid) {
     //Search if the GO is already their
     //Add an entry if this GO not existed
@@ -88,6 +98,9 @@ void GroupStatistics::addGO(int devId, string ssid) {
 
     //Add/update a cache entry for this GO
     ssidToDevIdMap[ssid] = devId;
+
+    //Add/Update an index entry
+    devIdToIndexMap[devId] = curIndex++;
 }
 
 void GroupStatistics::addGM(int devId, string goSsid) {
@@ -101,6 +114,9 @@ void GroupStatistics::addGM(int devId, string goSsid) {
         aGMs->push_back(devId);
         gmCount++;
     }
+
+    //Add/Update an index entry
+    devIdToIndexMap[devId] = curIndex++;
 }
 
 void GroupStatistics::addPM(int devId, string goSsid) {
@@ -120,9 +136,32 @@ void GroupStatistics::clearAll() {
     goCount = 0;
     gmCount = 0;
     pmCount = 0;
+    connectedComponentCount = 0;
+    curIndex = 0;
 
     goInfoMap.clear();
     ssidToDevIdMap.clear();
+    devIdToIndexMap.clear();
+}
+
+void GroupStatistics::calcGraphConnectivity() {
+    ConnectedComponents<int, int> components;
+
+    components.Init(devIdToIndexMap.size());
+
+    for (auto& gInfo : goInfoMap) {
+        for (const int& gmId : gInfo.second.associatedGMs) {
+            components.AddArc(devIdToIndexMap[gInfo.first],
+                    devIdToIndexMap[gmId]);
+        }
+
+        for (const int& pmId : gInfo.second.associatedPMs) {
+            components.AddArc(devIdToIndexMap[gInfo.first],
+                    devIdToIndexMap[pmId]);
+        }
+    }
+
+    connectedComponentCount = components.GetNumberOfConnectedComponents();
 }
 
 void GroupStatistics::writeGroupStats() {
@@ -145,6 +184,8 @@ void GroupStatistics::writeGroupStats() {
         EV_DETAIL << "\n+++++++++++++++++++++++++++++++++++++++\n";
     }
 
+    EV_DETAIL << "Num Of Connected Components : " << connectedComponentCount;
+
     EV_DETAIL
                      << "\n================End of Group Statistics====================\n";
 }
@@ -153,9 +194,18 @@ string GroupStatistics::getModuleNameFromId(int id) {
     return cSimulation::getActiveSimulation()->getModule(id)->getFullName();
 }
 
+void GroupStatistics::recordGroupStats() {
+    recordScalar("GO_Count", goCount);
+    recordScalar("GM_Count", gmCount);
+    recordScalar("PM_Count", pmCount);
+    recordScalar("CC_Count", connectedComponentCount);
+}
+
 void GroupStatistics::handleMessage(cMessage* msg) {
     if (msg == validDataMsg) {
+        calcGraphConnectivity();
         writeGroupStats();
+        recordGroupStats();
 
         scheduleAt(simTime() + tearDownPeriod, resetMsg);
     } else if (msg == resetMsg) {
