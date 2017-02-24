@@ -739,6 +739,7 @@ string UDPWFDServiceDiscovery::getConflictFreeSubnet() {
     string proSubnet = proposeSubnet();
     while (subnetConflicting()) {
         proSubnet = proposeSubnet();
+        myInfo.proposedSubnet = proSubnet;
         numIpConflicts++;
     }
     return proSubnet;
