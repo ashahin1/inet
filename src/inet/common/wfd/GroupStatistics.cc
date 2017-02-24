@@ -162,6 +162,11 @@ void GroupStatistics::calcGraphConnectivity() {
     }
 
     connectedComponentCount = components.GetNumberOfConnectedComponents();
+
+    group.clear();
+    for (int node = 0; node < numDevices; ++node) {
+        group[components.GetClassRepresentative(node)].push_back(node);
+    }
 }
 
 void GroupStatistics::writeGroupStats() {
@@ -186,12 +191,35 @@ void GroupStatistics::writeGroupStats() {
 
     EV_DETAIL << "Num Of Connected Components : " << connectedComponentCount;
 
+    for (auto& grpItem : group) {
+        EV_DETAIL << "\nComponent " << grpItem.first << ":\n";
+        for (const int& devId : grpItem.second) {
+            EV_DETAIL << getModuleNameFromIndex(devId) << ", ";
+        }
+    }
+
     EV_DETAIL
                      << "\n================End of Group Statistics====================\n";
 }
 
 string GroupStatistics::getModuleNameFromId(int id) {
     return cSimulation::getActiveSimulation()->getModule(id)->getFullName();
+}
+
+string GroupStatistics::getModuleNameFromIndex(int index) {
+    int id = -1;
+
+    for (auto& idIdx : devIdToIndexMap) {
+        if (idIdx.second == index) {
+            id = idIdx.first;
+            break;
+        }
+    }
+
+    if (id != -1)
+        return cSimulation::getActiveSimulation()->getModule(id)->getFullName();
+    else
+        return "";
 }
 
 void GroupStatistics::recordGroupStats() {

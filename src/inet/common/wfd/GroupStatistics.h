@@ -20,11 +20,13 @@
 #include "inet/common/ModuleAccess.h"
 #include <vector>
 #include <map>
+#include <hash_map>
 #include <string>
 
 namespace inet {
 
 using namespace std;
+using namespace __gnu_cxx;
 
 struct GoInfo {
     int devId;
@@ -59,6 +61,7 @@ protected:
     map<string, int> ssidToDevIdMap; //caches the GOs ssids and their id mapping
     map<int, int> devIdToIndexMap; //Maps devIds to indexes starting from 0 .. noOfNodes-1
     int curIndex;
+    hash_map<int, std::vector<int> > group;
 
 public:
     GroupStatistics();
@@ -73,6 +76,7 @@ public:
     void writeGroupStats();
     void recordGroupStats();
     string getModuleNameFromId(int id);
+    string getModuleNameFromIndex(int index);
     int getConnectedComponentCount() const;
     void calcGraphConnectivity();
 
