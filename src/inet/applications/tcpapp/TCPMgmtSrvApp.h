@@ -60,6 +60,7 @@ private:
     HeartBeatMap getPxAssignmentMap(int prevDevID);
     void calcPxAssignments();
     int getHbMsgSenderID(HeartBeatMsg* pxAssignMsg);
+    void adjustCost(std::vector<vector<double> >& cost);
 };
 
 } /* namespace inet */

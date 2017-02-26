@@ -264,6 +264,12 @@ HeartBeatMap TCPMgmtSrvApp::getPxAssignmentMap(int devID) {
     return hbMap;
 }
 
+void TCPMgmtSrvApp::adjustCost(vector<vector<double> >& cost) {
+    if ((cost.size() == 3) && (cost[0].size() == 3)) {
+        //Do some checking
+    }
+}
+
 void TCPMgmtSrvApp::calcPxAssignments() {
     pxAssignment.clear();
     peersInfo = clpBrd->getPeersInfo();
@@ -310,7 +316,10 @@ void TCPMgmtSrvApp::calcPxAssignments() {
     for (auto& mc : membersCoverage) {
         EV_DETAIL << "\n" << mc.first << "\t" << mc.second;
         //Populate the members list with all members that can reach other groups
-        membersList.push_back(mc.first);
+        //If the member does not cover any ssid, we should exclude it.
+        if (mc.second > 0) {
+            membersList.push_back(mc.first);
+        }
     }
 
     //Declare some variables that are needed by the Munkres algorithm implementation
@@ -350,7 +359,13 @@ void TCPMgmtSrvApp::calcPxAssignments() {
                 DeviceInfo *devInfo = &((*peersInfo)[mID]);
                 gm_cost = clpBrd->getRank(*devInfo);
 
-                //TODO: Adjust the cost
+                /*
+                 //Adjust the cost by adding a very small random number
+                 //to break ties if the same device is the only device to cover
+                 //two or more groups
+                 double tieBreaker = drand48();// * 0.01f;
+                 double adjustedCost = gm_cost * 1000 + tieBreaker * 10;
+                 */
 
                 //Note here that the cost is represented by the rank
                 //The rank by definition is better when higher
@@ -371,6 +386,8 @@ void TCPMgmtSrvApp::calcPxAssignments() {
             EV_DETAIL << "\t\t" << tmpRow[iii];
         }
     }
+
+    adjustCost(cost);
 
     //Now we start the Munkres (Hungarian) algorithm
     //We need to maximize the cost of assignments in this case
