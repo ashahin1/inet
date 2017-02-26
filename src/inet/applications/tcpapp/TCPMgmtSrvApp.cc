@@ -264,12 +264,6 @@ HeartBeatMap TCPMgmtSrvApp::getPxAssignmentMap(int devID) {
     return hbMap;
 }
 
-void TCPMgmtSrvApp::adjustCost(vector<vector<double> >& cost) {
-    if ((cost.size() == 3) && (cost[0].size() == 3)) {
-        //Do some checking
-    }
-}
-
 void TCPMgmtSrvApp::calcPxAssignments() {
     pxAssignment.clear();
     peersInfo = clpBrd->getPeersInfo();
@@ -342,16 +336,9 @@ void TCPMgmtSrvApp::calcPxAssignments() {
         //loop through each possible ssid
         for (const string& gSsid : ssidList) {
             //make sure that the current GM can reach the current ssid
-            HeartBeatRecord *hbRec = &heartBeatMap[mID];
-            bool found = false;
-            for (int i = 0; i < hbRec->reachableSSIDs.size(); i++) {
-                if (hbRec->reachableSSIDs[i].compare(gSsid) == 0) {
-                    found = true;
-                    break;
-                }
-            }
+            bool canReach = canReachSsid(mID, gSsid);
 
-            if (found) {
+            if (canReach) {
                 double gm_cost = 0.0f;
                 //We will use the same rank that we used before
                 //to select the GOs, which is already available
@@ -372,9 +359,10 @@ void TCPMgmtSrvApp::calcPxAssignments() {
                 tmpRow.push_back(gm_cost);
 
             } else {
-                //We should here add a cost of -INFINITY to indicate that
+                //We should here add a cost of a very small number to indicate that
                 //the current GM cannot reach the current SSID
-                tmpRow.push_back(-INFINITY);
+                //tmpRow.push_back(-INFINITY);
+                tmpRow.push_back(-9999999);
             }
         }
         //Add the prepared row to the cost matrix
@@ -387,8 +375,6 @@ void TCPMgmtSrvApp::calcPxAssignments() {
         }
     }
 
-    adjustCost(cost);
-
     //Now we start the Munkres (Hungarian) algorithm
     //We need to maximize the cost of assignments in this case
     operations_research::MaximizeLinearAssignment(cost, &direct_assignment,
@@ -396,13 +382,31 @@ void TCPMgmtSrvApp::calcPxAssignments() {
 
     EV_DETAIL << "\nReal Assignments Are As Follows:\n";
     for (auto& da : direct_assignment) {
-        EV_DETAIL << "\n" << membersList[da.first] << " ("
-                         << cSimulation::getActiveSimulation()->getModule(
-                                 membersList[da.first])->getFullName() << ") "
-                         << "\t" << ssidList[da.second];
-        //Adjust the assignment map, so it can be used to send assignments
-        pxAssignment[ssidList[da.second]] = membersList[da.first];
+        //Discard any assignments that are not valid
+        int devId = membersList[da.first];
+        string ssid = ssidList[da.second];
+        if (canReachSsid(devId, ssid)) {
+            EV_DETAIL << "\n" << devId << " ("
+                             << cSimulation::getActiveSimulation()->getModule(
+                                     devId)->getFullName() << ") " << "\t"
+                             << ssid;
+            //Adjust the assignment map, so it can be used to send assignments
+            pxAssignment[ssid] = devId;
+        }
     }
+}
+
+bool TCPMgmtSrvApp::canReachSsid(int devId, string ssid) {
+    HeartBeatRecord *hbRec = &heartBeatMap[devId];
+    bool found = false;
+    for (int i = 0; i < hbRec->reachableSSIDs.size(); i++) {
+        if (hbRec->reachableSSIDs[i].compare(ssid) == 0) {
+            found = true;
+            break;
+        }
+    }
+    return found;
+
 }
 
 } /* namespace inet */
