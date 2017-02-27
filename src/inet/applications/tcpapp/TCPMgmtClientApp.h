@@ -53,7 +53,7 @@ protected:
     virtual void socketDataArrived(int connId, void *ptr, cPacket *msg,
             bool urgent) override;
     virtual void refreshDisplay() const override;
-    virtual void setStatusString(const char *s) override;
+    virtual void setStatusString(const char *s);
 
 private:
     void initMyHeartBeatRecord();
