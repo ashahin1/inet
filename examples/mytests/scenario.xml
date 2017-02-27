@@ -1,0 +1,16 @@
+ 
+<scenario>
+    <at t="0.01">
+        <tell module="lifecycleController" target="device[*].udpApp[1]" operation="NodeShutdownOperation"/>
+        <tell module="lifecycleController" target="device[*].udpApp[2]" operation="NodeShutdownOperation" number="5"/>
+        <tell module="lifecycleController" target="device[*].wlan[1]" operation="NodeShutdownOperation" number="5"/>
+        <tell module="lifecycleController" target="device[*].wlan[2]" operation="NodeShutdownOperation" number="5"/>
+        <tell module="lifecycleController" target="device[*].wlan[3]" operation="NodeShutdownOperation" number="5"/>
+    </at>
+    <at t="70.0">
+        <tell module="lifecycleController" target="device[*].udpApp[1]" operation="NodeStartOperation" number="5"/>
+        <tell module="lifecycleController" target="device[*].udpApp[2]" operation="NodeStartOperation" number="5"/>     
+    </at>
+
+</scenario>
+

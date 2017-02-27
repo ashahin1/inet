@@ -430,7 +430,8 @@ void Ieee80211MgmtSTA::processScanCommand(Ieee80211Prim_ScanRequest *ctrl)
 
     // start scanning
     if (scanning.activeScan)
-        host->subscribe(IRadio::receptionStateChangedSignal, this);
+        if (!host->isSubscribed(IRadio::receptionStateChangedSignal, this))
+            host->subscribe(IRadio::receptionStateChangedSignal, this);
     scanning.currentChannelIndex = -1;    // so we'll start with index==0
     isScanning = true;
     scanNextChannel();
@@ -851,6 +852,15 @@ void Ieee80211MgmtSTA::storeAPInfo(const MACAddress& address, const Ieee80211Bea
 
     //XXX where to get this from?
     //ap->rxPower = ...
+}
+
+void Ieee80211MgmtSTA::stop() {
+    Ieee80211MgmtBase::stop();
+
+    isScanning = false;
+    if (isAssociated) {
+        disassociate();
+    }
 }
 
 } // namespace ieee80211

@@ -14,6 +14,7 @@
 // Author: Andras Varga (andras@omnetpp.org)
 //
 
+#include <string>
 #include <algorithm>
 #include "inet/common/lifecycle/LifecycleController.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
@@ -60,28 +61,78 @@ void LifecycleController::handleMessage(cMessage *msg)
     throw cRuntimeError("This module does not process messages");
 }
 
-void LifecycleController::processCommand(const cXMLElement& node)
-{
-    // resolve target module
-    const char *target = node.getAttribute("target");
-    cModule *module = getModuleByPath(target);
+void LifecycleController::processDirectCommand(cModule* target, bool up) {
+    if (target != nullptr) {
+        // resolve operation
+        const char* operationName = (
+                up ? "NodeStartOperation" : "NodeShutdownOperation");
+        LifecycleOperation* operation = check_and_cast<LifecycleOperation*>(
+                inet::utils::createOne(operationName));
+        std::map<std::string, std::string> params;
+        operation->initialize(target, params);
+        // do the operation
+        initiateOperation(operation);
+    } else {
+        EV_ERROR << "Can't process a command on a nullptr module";
+    }
+}
+
+void LifecycleController::processOneCommand(const char* target,
+        const cXMLElement& node) {
+    cModule* module = getModuleByPath(target);
     if (!module)
         throw cRuntimeError("Module '%s' not found", target);
 
     // resolve operation
-    const char *operationName = node.getAttribute("operation");
-    LifecycleOperation *operation = check_and_cast<LifecycleOperation *>(inet::utils::createOne(operationName));
+    const char* operationName = node.getAttribute("operation");
+    LifecycleOperation* operation = check_and_cast<LifecycleOperation*>(
+            inet::utils::createOne(operationName));
     std::map<std::string, std::string> params = node.getAttributes();
     params.erase("module");
     params.erase("t");
     params.erase("target");
     params.erase("operation");
+    const char *number = node.getAttribute("number");
+    if (number != nullptr) {
+        params.erase("number");
+    }
     operation->initialize(module, params);
     if (!params.empty())
-        throw cRuntimeError("Unknown parameter '%s' for operation %s at %s", params.begin()->first.c_str(), operationName, node.getSourceLocation());
+        throw cRuntimeError("Unknown parameter '%s' for operation %s at %s",
+                params.begin()->first.c_str(), operationName,
+                node.getSourceLocation());
 
     // do the operation
     initiateOperation(operation);
+}
+
+void LifecycleController::processCommand(const cXMLElement& node)
+{
+    // resolve target module
+    const char *target = node.getAttribute("target");
+
+    //check for multiple modules
+    std::string targetStr(target);
+    std::size_t found = targetStr.find('*');
+    if (found != std::string::npos) {
+        int numOfModules = 0;
+        const char *number = node.getAttribute("number");
+        if (number != nullptr) {
+            numOfModules = atoi(number);
+        } else {
+            cModule *network = dynamic_cast<cModule *>(getOwner());
+            int deviceCount = network->par("deviceCount").longValue();
+            numOfModules = deviceCount;
+        }
+
+        for (int i = 0; i < numOfModules; i++) {
+            targetStr.replace(found, 1, std::to_string(i));
+            processOneCommand(targetStr.c_str(), node);
+            targetStr = std::string(target);
+        }
+    } else { //It's a single module
+        processOneCommand(target, node);
+    }
 }
 
 bool LifecycleController::initiateOperation(LifecycleOperation *operation, IDoneCallback *completionCallback)

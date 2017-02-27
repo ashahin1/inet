@@ -50,8 +50,12 @@ void Ieee80211MgmtBase::initialize(int stage)
 
 void Ieee80211MgmtBase::handleMessage(cMessage *msg)
 {
-    if (!isOperational)
-        throw cRuntimeError("Message '%s' received when module is OFF", msg->getName());
+    if (!isOperational) {
+        //throw cRuntimeError("Message '%s' received when module is OFF", msg->getName());
+        EV << "Not Operational Ignoring Message: " << msg << "\n";
+        delete msg;
+        return;
+    }
 
     if (msg->isSelfMessage()) {
         // process timers

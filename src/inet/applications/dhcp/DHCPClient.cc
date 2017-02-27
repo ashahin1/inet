@@ -91,7 +91,7 @@ void DHCPClient::initialize(int stage)
 InterfaceEntry *DHCPClient::chooseInterface()
 {
     IInterfaceTable *ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
-    const char *interfaceName = par("interface");
+    const char *interfaceName = par("interface").stringValue();
     InterfaceEntry *ie = nullptr;
 
     if (strlen(interfaceName) > 0) {
@@ -668,10 +668,12 @@ void DHCPClient::sendToUDP(cPacket *msg, int srcPort, const L3Address& destAddr,
 
 void DHCPClient::openSocket()
 {
+    socket = UDPSocket();
     socket.setOutputGate(gate("udpOut"));
     socket.bind(clientPort);
     socket.setBroadcast(true);
     EV_INFO << "DHCP server bound to port " << serverPort << "." << endl;
+    socketOpened = true;
 }
 
 void DHCPClient::startApp()
@@ -692,6 +694,12 @@ void DHCPClient::stopApp()
     // TODO: Client should send DHCPRELEASE to the server. However, the correct operation
     // of DHCP does not depend on the transmission of DHCPRELEASE messages.
     // TODO: socket.close();
+
+    if (socketOpened) {
+        //socket.setOutputGate(gate("udpOut"));
+        socket.close();
+        socketOpened = false;
+    }
 }
 
 bool DHCPClient::handleOperationStage(LifecycleOperation *operation, int stage, IDoneCallback *doneCallback)
@@ -720,6 +728,21 @@ bool DHCPClient::handleOperationStage(LifecycleOperation *operation, int stage, 
     else
         throw cRuntimeError("Unsupported lifecycle operation '%s'", operation->getClassName());
     return true;
+}
+
+void DHCPClient::handleParameterChange(const char *parameterName)
+{
+    if (opp_strlen(parameterName) > 0) {
+        if (opp_strcmp(parameterName, "interface") == 0) {
+            //Restart the app
+            if (isOperational) {
+                stopApp();
+                //socket.setOutputGate(gate("udpOut"));
+                //socket.close();
+                startApp();
+            }
+        }
+    }
 }
 
 } // namespace inet
