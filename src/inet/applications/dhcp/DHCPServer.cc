@@ -87,8 +87,7 @@ void DHCPServer::openSocket() {
     socketOpened = true;
 }
 
-void DHCPServer::receiveSignal(cComponent *source, int signalID, cObject *obj
-DETAILS_ARG) {
+void DHCPServer::receiveSignal(cComponent *source, int signalID, cObject *obj) {
     Enter_Method_Silent();
 
     if (signalID == NF_INTERFACE_DELETED) {
