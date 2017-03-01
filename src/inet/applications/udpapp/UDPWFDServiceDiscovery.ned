@@ -19,7 +19,7 @@ package inet.applications.udpapp;
 // TODO auto-generated type
 //
 simple UDPWFDServiceDiscovery extends UDPBasicApp
-{    
+{
     parameters:
         string clipBoardModule = default("");
         string groupStatisticsModule = default("");
@@ -42,11 +42,19 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
         double selectGoPeriod @unit(s);// = default(this.declareGoPeriod);
         double switchDhcpPeriod @unit(s);// = default (this.sendInterval * 2);
         double tearDownPeriod @unit(s);// = default(this.switchDhcpPeriod * 2);
-        
+
+        //Parameters for comparing my approach to a base line
+        string subnetProposalType @enum("ISNP","NO_CONFLICT_DETECTION") = default("ISNP");
+        string goDeclarationMethod @enum("EMC", "EMC_TWO_HOP" ,"RANDOM") = default("EMC_TWO_HOP");
+
         packetName = default("ServiceDiscovery");
         receiveBroadcast = default(true);
         localPort = default(5000);
         destPort = default(5000);
         destAddresses = default("255.255.255.255");
         @class(UDPWFDServiceDiscovery);
+        @signal[membersChanged];
+        @signal[endToEndDelay];
+        @statistic[numOfAssociatedMembers](title="Associated members count"; source=membersChanged; record=last);
+        @statistic[endToEndDelay](title="Request to response delay"; source=endToEndDelay; record=vector,timeavg,max);
 }

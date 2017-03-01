@@ -61,8 +61,22 @@ void TCPMgmtSrvApp::initialize(int stage) {
             mySSID = apNic->getSubmodule("mgmt")->par("ssid").stringValue();
         }
 
+        selectProxyAssignmentType();
+
         ttlMsg = new cMessage("ttlMsg");
         ttlMsg->setKind(TTL_MSG);
+    }
+}
+
+void TCPMgmtSrvApp::selectProxyAssignmentType() {
+    string pType = par("proxyAssignmentType").stringValue();
+
+    if (pType.compare("MUNKRES") == 0) {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_MUNKRES;
+    } else if (pType.compare("FIRST_AVAILABLE") == 0) {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_FIRST_AVAILABLE;
+    } else {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_MUNKRES;
     }
 }
 

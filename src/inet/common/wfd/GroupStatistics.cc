@@ -35,6 +35,13 @@ GroupStatistics::~GroupStatistics() {
     cancelAndDelete(resetMsg);
 }
 
+void GroupStatistics::finish(){
+    //We record here the conflict in subnets.
+    //This way we will get it as soon as we finish the simulation.
+    //Thus we don't have to wait for the validDataMsg, and can finish early.
+    recordScalar("Conflict_Count", conflictCount);
+}
+
 void GroupStatistics::initialize(int stage) {
     numDevices = par("numDevices");
     sendInterval = par("sendInterval").doubleValue();
@@ -46,8 +53,10 @@ void GroupStatistics::initialize(int stage) {
     WATCH(goCount);
     WATCH(gmCount);
     WATCH(pmCount);
+    WATCH(orphCount);
     WATCH(curIndex);
     WATCH(connectedComponentCount);
+    WATCH(conflictCount);
 
     validDataMsg = new cMessage("validDataMsg");
     scheduleAt(
@@ -60,7 +69,7 @@ void GroupStatistics::initialize(int stage) {
 
 void GroupStatistics::refreshDisplay() const {
     char buf[80];
-    sprintf(buf, "GOs: %d GMs: %d PMs: %d", goCount, gmCount, pmCount);
+    sprintf(buf, "GOs: %d GMs: %d PMs: %d ORPH: %d", goCount, gmCount, pmCount, orphCount);
     getDisplayString().setTagArg("t", 0, buf);
 }
 
@@ -74,6 +83,10 @@ int GroupStatistics::getGoCount() const {
 
 int GroupStatistics::getPmCount() const {
     return pmCount;
+}
+
+int GroupStatistics::getOrphCount() const {
+    return orphCount;
 }
 
 int GroupStatistics::getConnectedComponentCount() const {
@@ -132,16 +145,34 @@ void GroupStatistics::addPM(int devId, string goSsid) {
     }
 }
 
+
+void GroupStatistics::addOrph() {
+    orphCount++;
+}
+
+void GroupStatistics::addSubnet(string subnet) {
+    if (assignedSubnetCount.count(subnet) == 0) {
+        assignedSubnetCount[subnet] = 1;
+    } else {
+        assignedSubnetCount[subnet] += 1;
+    }
+
+    updateConlictCount();
+}
+
 void GroupStatistics::clearAll() {
     goCount = 0;
     gmCount = 0;
     pmCount = 0;
+    orphCount = 0;
     connectedComponentCount = 0;
     curIndex = 0;
+    conflictCount = 0;
 
     goInfoMap.clear();
     ssidToDevIdMap.clear();
     devIdToIndexMap.clear();
+    group.clear();
 }
 
 void GroupStatistics::calcGraphConnectivity() {
@@ -226,7 +257,20 @@ void GroupStatistics::recordGroupStats() {
     recordScalar("GO_Count", goCount);
     recordScalar("GM_Count", gmCount);
     recordScalar("PM_Count", pmCount);
+    recordScalar("ORPH_Count", orphCount);
     recordScalar("CC_Count", connectedComponentCount);
+}
+
+void GroupStatistics::updateConlictCount() {
+    //get the number of subnets with only one occurrences
+    int count = std::count(assignedSubnetCount.begin(),
+            assignedSubnetCount.end(), Compare(1));
+
+    conflictCount = assignedSubnetCount.size() - count;
+}
+
+int GroupStatistics::getConflictCount() const {
+    return conflictCount;
 }
 
 void GroupStatistics::handleMessage(cMessage* msg) {
@@ -248,3 +292,4 @@ void GroupStatistics::handleMessage(cMessage* msg) {
 }
 
 } /* namespace inet */
+

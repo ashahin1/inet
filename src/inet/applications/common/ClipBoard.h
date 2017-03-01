@@ -31,6 +31,18 @@ enum ProtocolStates {
     PROTOCOL_TEARDOWN = 1004
 };
 
+enum SubnetProposalTypes {
+    SPT_ISNP = 1010, SPT_NO_CONFLICT_DETECTION = 1011
+};
+
+enum GoDeclarationTypes {
+    GDT_EMC = 1020, GDT_EMC_TWO_HOP = 1021, GDT_RANDOM = 1022
+};
+
+enum ProxyAssignmentTypes {
+    PAT_MUNKRES = 1030, PAT_FIRST_AVAILABLE = 1031
+};
+
 static const int TTL_MSG = 9999;
 
 struct DeviceInfo {

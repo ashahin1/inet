@@ -31,6 +31,17 @@ using namespace std;
 using namespace ieee80211;
 
 class UDPWFDServiceDiscovery: public UDPBasicApp {
+public:
+    /**
+     * The signal that is used to publish changes in number of
+     * associated members
+     */
+    static simsignal_t membersChangedSignal;
+    /**
+     * The signal that is used to publish the delay between sending
+     * a request and receiving its response.
+     */
+    static simsignal_t endToEndDelaySignal;
 protected:
     GroupStatistics *groupStatistics = nullptr;
     ClipBoard *clpBrd = nullptr;
@@ -39,8 +50,9 @@ protected:
     int numResponseRcvd = 0;
     int numRequestSent = 0;
     int numRequestRcvd = 0;
-    int numIpConflicts = 0;
+    int numDetectedIpConflicts = 0;
     int numOfTimesOrphaned = 0;
+    int numOfAssociatedMembers = 0;
     bool isGroupOwner = false;
     bool isOrphaned = false;
     bool isGroupMember = false;
@@ -50,6 +62,9 @@ protected:
     simtime_t selectGoPeriod;
     simtime_t switchDhcpPeriod;
     simtime_t tearDownPeriod;
+
+    SubnetProposalTypes subnetProposalType;
+    GoDeclarationTypes goDeclarationType;
 
     IInterfaceTable *ift = nullptr;
     EnergyStorageBase *energyStorage = nullptr;
@@ -67,8 +82,6 @@ protected:
     Ieee80211MgmtAP *apMgmt = nullptr;
 
     cMessage *protocolMsg = nullptr;
-
-    cOutVector endToEndDelayVec;
 
     DevicesInfo peersInfo;
     DeviceInfo myInfo;
@@ -124,6 +137,10 @@ private:
     void resetDevice();
     bool myProposedGoNeedsUpdate();
     void clearInterfaceIpAddress(string ifNamePar);
+    int getNumberOfMembers() const;
+    void selectSubnetProposalType();
+    void selectGoDeclarationType();
+    bool shouldBeGO();
 };
 
 } /* namespace inet */

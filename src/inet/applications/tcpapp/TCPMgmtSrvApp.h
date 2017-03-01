@@ -33,6 +33,8 @@ protected:
     cModule *apNic = nullptr;
     cModule *device = nullptr;
 
+    ProxyAssignmentTypes proxyAssignmentType;
+
     cMessage *ttlMsg = nullptr;
 
     DevicesInfo *peersInfo;
@@ -61,6 +63,7 @@ private:
     void calcPxAssignments();
     int getHbMsgSenderID(HeartBeatMsg* pxAssignMsg);
     bool canReachSsid(int devId, string ssid);
+    void selectProxyAssignmentType();
 };
 
 } /* namespace inet */
