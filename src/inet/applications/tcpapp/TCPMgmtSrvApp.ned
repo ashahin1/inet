@@ -27,6 +27,6 @@ simple TCPMgmtSrvApp extends TCPGenericSrvApp
     string ApNicName = default(".wlan[1]");
     int hb_ttl = default(30);
     double decTtlPeriod @unit(s) = default(1s);
-    string proxyAssignmentType @enum("MUNKRES","FIRST_AVAILABLE") = default("MUNKRES");
+    string proxyAssignmentType @enum("MUNKRES","FIRST_AVAILABLE", "RANDOM") = default("MUNKRES");
     @class(TCPMgmtSrvApp);
 }

@@ -79,6 +79,8 @@ protected:
     int curIndex;
     hash_map<int, std::vector<int> > group; //A map that holds each connected component members.
 
+    vector <int> orphanedList; //A map that hold the list of orphaned devices
+
     // A map that holds the number of conflicts per each subnet
     // Here we let each GO records its subnet and we increase the count for it
     // if a subnet has a count > 1 it means we have a conflict in the assignment.
@@ -91,7 +93,7 @@ public:
     void addGO(int devId, string ssid);
     void addGM(int devId, string goSsid);
     void addPM(int devId, string goSsid);
-    void addOrph();
+    void addOrph(int devId);
     void addSubnet(string subnet);
     int getGmCount() const;
     int getGoCount() const;

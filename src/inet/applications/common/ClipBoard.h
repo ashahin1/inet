@@ -40,7 +40,7 @@ enum GoDeclarationTypes {
 };
 
 enum ProxyAssignmentTypes {
-    PAT_MUNKRES = 1030, PAT_FIRST_AVAILABLE = 1031
+    PAT_MUNKRES = 1030, PAT_FIRST_AVAILABLE = 1031, PAT_RANDOM = 1032
 };
 
 static const int TTL_MSG = 9999;

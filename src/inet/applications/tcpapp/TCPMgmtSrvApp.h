@@ -20,6 +20,8 @@
 #include "inet/applications/common/ClipBoard.h"
 #include "inet/applications/tcpapp/TCPGenericSrvApp.h"
 
+#include "/home/ahmed/or-tools/include/algorithms/hungarian.h"
+
 namespace inet {
 
 using namespace std;
@@ -64,6 +66,20 @@ private:
     int getHbMsgSenderID(HeartBeatMsg* pxAssignMsg);
     bool canReachSsid(int devId, string ssid);
     void selectProxyAssignmentType();
+    void buildSsidCoverage(std::map<string, int>& ssidCoverage);
+    void buildMembersCoverage(std::map<int, int>& membersCoverage);
+    void populateCostMatrix(const std::vector<string>& ssidList,
+            const std::vector<int>& membersList,
+            std::vector<vector<double> >& cost);
+    void populatePxAssignmentMunkres(hash_map<int, int> direct_assignment,
+            const std::vector<int>& membersList,
+            const std::vector<string>& ssidList);
+    void populatePxAssignmentFirstAvailable(const std::vector<string>& ssidList,
+            const std::vector<int>& membersList);
+    void populatePxAssignmentRandom(const std::vector<string>& ssidList,
+            const std::vector<int>& membersList);
+    void populatePxAssignments(std::vector<string> ssidList,
+            std::vector<int> membersList);
 };
 
 } /* namespace inet */

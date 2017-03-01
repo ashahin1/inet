@@ -288,7 +288,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                     isOrphaned = true;
                     numOfTimesOrphaned++;
                     if (groupStatistics) {
-                        groupStatistics->addOrph();
+                        groupStatistics->addOrph(myInfo.deviceId);
                     }
                 }
             }

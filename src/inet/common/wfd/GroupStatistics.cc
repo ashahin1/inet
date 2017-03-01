@@ -35,7 +35,7 @@ GroupStatistics::~GroupStatistics() {
     cancelAndDelete(resetMsg);
 }
 
-void GroupStatistics::finish(){
+void GroupStatistics::finish() {
     //We record here the conflict in subnets.
     //This way we will get it as soon as we finish the simulation.
     //Thus we don't have to wait for the validDataMsg, and can finish early.
@@ -69,7 +69,8 @@ void GroupStatistics::initialize(int stage) {
 
 void GroupStatistics::refreshDisplay() const {
     char buf[80];
-    sprintf(buf, "GOs: %d GMs: %d PMs: %d ORPH: %d", goCount, gmCount, pmCount, orphCount);
+    sprintf(buf, "GOs: %d GMs: %d PMs: %d ORPH: %d", goCount, gmCount, pmCount,
+            orphCount);
     getDisplayString().setTagArg("t", 0, buf);
 }
 
@@ -145,9 +146,12 @@ void GroupStatistics::addPM(int devId, string goSsid) {
     }
 }
 
-
-void GroupStatistics::addOrph() {
+void GroupStatistics::addOrph(int devId) {
+    orphanedList.push_back(devId);
     orphCount++;
+
+    //Add/Update an index entry
+    devIdToIndexMap[devId] = curIndex++;
 }
 
 void GroupStatistics::addSubnet(string subnet) {
@@ -172,6 +176,7 @@ void GroupStatistics::clearAll() {
     goInfoMap.clear();
     ssidToDevIdMap.clear();
     devIdToIndexMap.clear();
+    orphanedList.clear();
     group.clear();
 }
 
@@ -179,7 +184,7 @@ void GroupStatistics::calcGraphConnectivity() {
     ConnectedComponents<int, int> components;
 
     components.Init(devIdToIndexMap.size());
-
+    //loop through all groups
     for (auto& gInfo : goInfoMap) {
         for (const int& gmId : gInfo.second.associatedGMs) {
             components.AddArc(devIdToIndexMap[gInfo.first],
@@ -190,6 +195,10 @@ void GroupStatistics::calcGraphConnectivity() {
             components.AddArc(devIdToIndexMap[gInfo.first],
                     devIdToIndexMap[pmId]);
         }
+    }
+    //If we have orphaned members we should consider them too
+    for (const int &orpId : orphanedList) {
+        components.AddArc(devIdToIndexMap[orpId], devIdToIndexMap[orpId]);
     }
 
     connectedComponentCount = components.GetNumberOfConnectedComponents();
