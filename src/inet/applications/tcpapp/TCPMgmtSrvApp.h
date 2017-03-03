@@ -46,6 +46,9 @@ protected:
     PxAssignment pxAssignment;
 
     string mySSID = "";
+
+    bool isOperational = true;
+    bool socketListening = true;
 public:
     TCPMgmtSrvApp();
     virtual ~TCPMgmtSrvApp();
@@ -81,6 +84,8 @@ private:
             const std::vector<int>& membersList);
     void populatePxAssignments(std::vector<string> ssidList,
             std::vector<int> membersList);
+    void reopenSocket();
+    void closeSocket();
 };
 
 } /* namespace inet */

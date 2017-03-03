@@ -125,7 +125,13 @@ void TCPMgmtClientApp::handleMessage(cMessage* msg) {
 
         scheduleAt(simTime() + par("decTtlPeriod"), msg);
     } else {
-        TCPAppBase::handleMessage(msg);
+        //Let's try to limit the sending of messages to only when the node is operational
+        //I hope that this fixes the various unexpected socket errors.
+        if (isNodeUp()) {
+            TCPAppBase::handleMessage(msg);
+        } else {
+            delete msg;
+        }
     }
 }
 

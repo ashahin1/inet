@@ -79,6 +79,8 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
                 par("dhcpServerAppName").stringValue());
         tcpMgmtClientApp = device->getModuleByPath(
                 par("tcpMgmtClientAppName").stringValue());
+        tcpMgmtSrvApp = device->getModuleByPath(
+                par("tcpMgmtSrvAppName").stringValue());
         sdNic = device->getModuleByPath(par("sdNicName").stringValue());
         apNic = device->getModuleByPath(par("ApNicName").stringValue());
         if (apNic != nullptr) {
@@ -270,6 +272,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                 setApIpAddress();
                 setDhcpServerParams();
                 turnDhcpServerOn();
+                turnTcpMgmtSrvAppOn();
                 numOfTimesGO++;
 
                 //Add an entry for stats collection
@@ -543,6 +546,7 @@ void UDPWFDServiceDiscovery::turnModulesOff() {
         lifeCycleCtrl->processDirectCommand(dhcpClient, false);
         lifeCycleCtrl->processDirectCommand(dhcpServer, false);
         lifeCycleCtrl->processDirectCommand(tcpMgmtClientApp, false);
+        lifeCycleCtrl->processDirectCommand(tcpMgmtSrvApp, false);
         lifeCycleCtrl->processDirectCommand(apNic, false);
         lifeCycleCtrl->processDirectCommand(p2pNic, false);
         lifeCycleCtrl->processDirectCommand(proxyNic, false);
@@ -561,6 +565,10 @@ void UDPWFDServiceDiscovery::turnDhcpServerOn() {
 
 void UDPWFDServiceDiscovery::turnTcpMgmtClientAppOn() {
     lifeCycleCtrl->processDirectCommand(tcpMgmtClientApp, true);
+}
+
+void UDPWFDServiceDiscovery::turnTcpMgmtSrvAppOn() {
+    lifeCycleCtrl->processDirectCommand(tcpMgmtSrvApp, true);
 }
 
 void UDPWFDServiceDiscovery::turnApInterfaceOn() {

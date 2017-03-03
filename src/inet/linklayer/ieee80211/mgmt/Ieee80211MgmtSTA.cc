@@ -272,7 +272,13 @@ void Ieee80211MgmtSTA::clearAPList()
 {
     for (auto & elem : apList)
         if (elem.authTimeoutMsg)
-            delete cancelEvent(elem.authTimeoutMsg);
+            if (elem.authTimeoutMsg != nullptr) {
+                if (elem.authTimeoutMsg->isSelfMessage()) {
+                    delete cancelEvent(elem.authTimeoutMsg);
+                } else {
+                    //delete elem.authTimeoutMsg;
+                }
+            }
 
     apList.clear();
 }

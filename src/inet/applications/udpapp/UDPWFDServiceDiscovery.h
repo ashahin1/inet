@@ -77,6 +77,7 @@ protected:
     cModule *dhcpClient = nullptr;
     cModule *dhcpServer = nullptr;
     cModule *tcpMgmtClientApp = nullptr;
+    cModule *tcpMgmtSrvApp = nullptr;
     cModule *sdNic = nullptr;
     cModule *apNic = nullptr;
     cModule *p2pNic = nullptr;
@@ -108,6 +109,7 @@ private:
     void turnDhcpClientOn();
     void turnDhcpServerOn();
     void turnTcpMgmtClientAppOn();
+    void turnTcpMgmtSrvAppOn();
     void turnApInterfaceOn();
     void turnP2pInterfaceOn();
     void turnProxyInterfaceOn();

@@ -67,18 +67,33 @@ void TCPMgmtSrvApp::initialize(int stage) {
     }
 }
 
-void TCPMgmtSrvApp::selectProxyAssignmentType() {
-    string pType = par("proxyAssignmentType").stringValue();
-
-    if (pType.compare("MUNKRES") == 0) {
-        proxyAssignmentType = ProxyAssignmentTypes::PAT_MUNKRES;
-    } else if (pType.compare("FIRST_AVAILABLE") == 0) {
-        proxyAssignmentType = ProxyAssignmentTypes::PAT_FIRST_AVAILABLE;
-    } else if (pType.compare("RANDOM") == 0) {
-        proxyAssignmentType = ProxyAssignmentTypes::PAT_RANDOM;
-    } else {
-        proxyAssignmentType = ProxyAssignmentTypes::PAT_MUNKRES;
+bool TCPMgmtSrvApp::handleOperationStage(LifecycleOperation* operation,
+        int stage, IDoneCallback* doneCallback) {
+    Enter_Method_Silent();
+    if (dynamic_cast<NodeStartOperation *>(operation)) {
+        if ((NodeStartOperation::Stage)stage == NodeStartOperation::STAGE_APPLICATION_LAYER) {
+            if(!isOperational) {
+                reopenSocket();
+            }
+            isOperational = true;
+        }
     }
+    else if (dynamic_cast<NodeShutdownOperation *>(operation)) {
+        if ((NodeShutdownOperation::Stage)stage == NodeShutdownOperation::STAGE_APPLICATION_LAYER) {
+            isOperational = false;
+            closeSocket();
+        }
+    }
+    else if (dynamic_cast<NodeCrashOperation *>(operation)) {
+        if ((NodeCrashOperation::Stage)stage == NodeCrashOperation::STAGE_CRASH) {
+            isOperational = false;
+            closeSocket();
+        }
+    }
+    else {
+        throw cRuntimeError("Unsupported lifecycle operation '%s'", operation->getClassName());
+    }
+    return true;
 }
 
 void TCPMgmtSrvApp::handleMessage(cMessage* msg) {
@@ -94,13 +109,55 @@ void TCPMgmtSrvApp::handleMessage(cMessage* msg) {
 
             scheduleAt(simTime() + par("decTtlPeriod"), msg);
         } else {
-            TCPGenericSrvApp::handleMessage(msg);
+            //Let's try to avoid any socket operation while we are closed
+            if (isOperational) {
+                TCPGenericSrvApp::handleMessage(msg);
+            } else {
+                delete msg;
+            }
         }
     } else {
         heartBeatMap.clear();
         if (msg->getKind() != TTL_MSG) {
             delete msg;
         }
+    }
+}
+
+
+void TCPMgmtSrvApp::closeSocket() {
+    if (socketListening) {
+        socket.close();
+        socketListening = false;
+    }
+}
+
+void TCPMgmtSrvApp::reopenSocket() {
+    const char *localAddress = par("localAddress");
+    int localPort = par("localPort");
+
+    socket = TCPSocket();
+    socket.setOutputGate(gate("tcpOut"));
+    socket.setDataTransferMode(TCP_TRANSFER_OBJECT);
+    socket.bind(
+            localAddress[0] ?
+                    L3AddressResolver().resolve(localAddress) : L3Address(),
+            localPort);
+    socket.listen();
+    socketListening = true;
+}
+
+void TCPMgmtSrvApp::selectProxyAssignmentType() {
+    string pType = par("proxyAssignmentType").stringValue();
+
+    if (pType.compare("MUNKRES") == 0) {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_MUNKRES;
+    } else if (pType.compare("FIRST_AVAILABLE") == 0) {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_FIRST_AVAILABLE;
+    } else if (pType.compare("RANDOM") == 0) {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_RANDOM;
+    } else {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_MUNKRES;
     }
 }
 
@@ -417,11 +474,6 @@ void TCPMgmtSrvApp::populatePxAssignmentRandom(const vector<string>& ssidList,
             }
         }
     }
-}
-
-bool TCPMgmtSrvApp::handleOperationStage(LifecycleOperation* operation,
-        int stage, IDoneCallback* doneCallback) {
-    return true;
 }
 
 void TCPMgmtSrvApp::populatePxAssignments(vector<string> ssidList,
