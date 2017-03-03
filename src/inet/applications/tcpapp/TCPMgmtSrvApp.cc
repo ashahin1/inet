@@ -419,6 +419,11 @@ void TCPMgmtSrvApp::populatePxAssignmentRandom(const vector<string>& ssidList,
     }
 }
 
+bool TCPMgmtSrvApp::handleOperationStage(LifecycleOperation* operation,
+        int stage, IDoneCallback* doneCallback) {
+    return true;
+}
+
 void TCPMgmtSrvApp::populatePxAssignments(vector<string> ssidList,
         vector<int> membersList) {
     if (proxyAssignmentType == ProxyAssignmentTypes::PAT_MUNKRES) {

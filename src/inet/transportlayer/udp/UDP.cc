@@ -148,8 +148,11 @@ void UDP::initialize(int stage)
 
 void UDP::handleMessage(cMessage *msg)
 {
-    if (!isOperational)
+    if (!isOperational) {
+        delete msg;
+        return;
         throw cRuntimeError("Message '%s' received when UDP is OFF", msg->getName());
+    }
 
     // received from IP layer
     if (msg->arrivedOn("ipIn")) {

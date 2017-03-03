@@ -54,6 +54,7 @@ protected:
     virtual void sendBack(cMessage *msg) override;
     virtual void sendOrSchedule(cMessage *msg, simtime_t delay) override;
     virtual void handleMessage(cMessage *msg) override;
+    virtual bool handleOperationStage(LifecycleOperation *operation, int stage, IDoneCallback *doneCallback) override;
 
 private:
     void initMyHeartBeatRecord();

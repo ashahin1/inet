@@ -54,6 +54,31 @@ bool operator==(const Compare& c, const std::pair<string, int>&p) {
 #endif
 
 class GroupStatistics: public omnetpp::cSimpleModule {
+public:
+    /**
+     * The signal that is used to collect the number of GOs during each protocol run.
+     */
+    static simsignal_t goCountSignal;
+    /**
+     * The signal that is used to collect the number of GMs during each protocol run.
+     */
+    static simsignal_t gmCountSignal;
+    /**
+     * The signal that is used to collect the number of PMs during each protocol run.
+     */
+    static simsignal_t pmCountSignal;
+    /**
+     * The signal that is used to collect the number of Orphaned Members during each protocol run.
+     */
+    static simsignal_t orphCountSignal;
+    /**
+     * The signal that is used to collect the number of Orphaned Members during each protocol run.
+     */
+    static simsignal_t connectedComponectCountSignal;
+    /**
+     * The signal that is used to collect the number of subnet conflicts (after settling) during each protocol run.
+     */
+    static simsignal_t conflictCountSignal;
 protected:
     int goCount;
     int gmCount;
@@ -79,7 +104,7 @@ protected:
     int curIndex;
     hash_map<int, std::vector<int> > group; //A map that holds each connected component members.
 
-    vector <int> orphanedList; //A map that hold the list of orphaned devices
+    vector<int> orphanedList; //A map that hold the list of orphaned devices
 
     // A map that holds the number of conflicts per each subnet
     // Here we let each GO records its subnet and we increase the count for it

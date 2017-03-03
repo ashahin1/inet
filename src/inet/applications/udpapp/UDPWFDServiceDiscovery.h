@@ -50,8 +50,11 @@ protected:
     int numResponseRcvd = 0;
     int numRequestSent = 0;
     int numRequestRcvd = 0;
-    int numDetectedIpConflicts = 0;
+    int numResolvedIpConflicts = 0;
     int numOfTimesOrphaned = 0;
+    int numOfTimesGO = 0;
+    int numOfTimesGM = 0;
+    int numOfTimesPM = 0;
     int numOfAssociatedMembers = 0;
     bool isGroupOwner = false;
     bool isOrphaned = false;
@@ -98,6 +101,7 @@ protected:
     virtual void handleMessageWhenUp(cMessage *msg) override;
     UDPSocket::SendOptions* setDatagramOutInterface();
     virtual void refreshDisplay() const override;
+    virtual bool handleNodeShutdown(IDoneCallback *doneCallback) override;
 
 private:
     void turnModulesOff();

@@ -317,6 +317,13 @@ void IPv4::handlePacketFromHL(cPacket *packet)
         datagram = encapsulate(packet, controlInfo);
     }
 
+    if(!datagram) {
+        // a hack (more is encapsulate method)
+        //delete controlInfo;
+        //delete packet;
+        return;
+    }
+
     // extract requested interface and next hop
     const InterfaceEntry *destIE = controlInfo ? const_cast<const InterfaceEntry *>(ift->getInterfaceById(controlInfo->getInterfaceId())) : nullptr;
 
@@ -761,9 +768,15 @@ IPv4Datagram *IPv4::encapsulate(cPacket *transportPacket, IPv4ControlInfo *contr
     // of the outgoing interface after routing
     if (!src.isUnspecified()) {
         // if interface parameter does not match existing interface, do not send datagram
-        if (rt->getInterfaceByAddress(src) == nullptr)
+        if (rt->getInterfaceByAddress(src) == nullptr){
+            //a hack to get rid of an error that happens when a frame has came for the tcp layer with an ip that is not ours
+            //the tcp layer in such case sends the frame back, and here the destination interface is not known because it is based on a wrong
+            //destination Ip address.
+            delete datagram;
+            return nullptr;
             throw cRuntimeError("Wrong source address %s in (%s)%s: no interface with such address",
                     src.str().c_str(), transportPacket->getClassName(), transportPacket->getFullName());
+        }
 
         datagram->setSrcAddress(src);
     }

@@ -55,6 +55,6 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
         @class(UDPWFDServiceDiscovery);
         @signal[membersChanged];
         @signal[endToEndDelay];
-        @statistic[numOfAssociatedMembers](title="Associated members count"; source=membersChanged; record=last);
+        @statistic[numOfAssociatedMembers](title="Associated members count"; source=membersChanged; record=vector, last);
         @statistic[endToEndDelay](title="Request to response delay"; source=endToEndDelay; record=vector,timeavg,max);
 }

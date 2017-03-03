@@ -24,6 +24,19 @@ using namespace operations_research;
 
 Define_Module(GroupStatistics);
 
+simsignal_t GroupStatistics::goCountSignal =
+        cComponent::registerSignal("GoCount");
+simsignal_t GroupStatistics::gmCountSignal =
+        cComponent::registerSignal("GmCount");
+simsignal_t GroupStatistics::pmCountSignal =
+        cComponent::registerSignal("PmCount");
+simsignal_t GroupStatistics::orphCountSignal =
+        cComponent::registerSignal("OrphCount");
+simsignal_t GroupStatistics::connectedComponectCountSignal =
+        cComponent::registerSignal("CcCount");
+simsignal_t GroupStatistics::conflictCountSignal =
+        cComponent::registerSignal("ConflictCount");
+
 GroupStatistics::GroupStatistics() {
     // TODO Auto-generated constructor stub
     clearAll();
@@ -177,6 +190,7 @@ void GroupStatistics::clearAll() {
     ssidToDevIdMap.clear();
     devIdToIndexMap.clear();
     orphanedList.clear();
+    assignedSubnetCount.clear();
     group.clear();
 }
 
@@ -204,7 +218,7 @@ void GroupStatistics::calcGraphConnectivity() {
     connectedComponentCount = components.GetNumberOfConnectedComponents();
 
     group.clear();
-    for (int node = 0; node < numDevices; ++node) {
+    for (int node = 0; node < curIndex/*numDevices*/; ++node) {
         group[components.GetClassRepresentative(node)].push_back(node);
     }
 }
@@ -263,11 +277,17 @@ string GroupStatistics::getModuleNameFromIndex(int index) {
 }
 
 void GroupStatistics::recordGroupStats() {
-    recordScalar("GO_Count", goCount);
-    recordScalar("GM_Count", gmCount);
-    recordScalar("PM_Count", pmCount);
-    recordScalar("ORPH_Count", orphCount);
-    recordScalar("CC_Count", connectedComponentCount);
+//    recordScalar("GO_Count", goCount);
+//    recordScalar("GM_Count", gmCount);
+//    recordScalar("PM_Count", pmCount);
+//    recordScalar("ORPH_Count", orphCount);
+//    recordScalar("CC_Count", connectedComponentCount);
+    emit(goCountSignal, goCount);
+    emit(gmCountSignal, gmCount);
+    emit(pmCountSignal, pmCount);
+    emit(orphCountSignal, orphCount);
+    emit(connectedComponectCountSignal, connectedComponentCount);
+    emit(conflictCountSignal, conflictCount);
 }
 
 void GroupStatistics::updateConlictCount() {

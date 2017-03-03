@@ -47,11 +47,14 @@ UDPWFDServiceDiscovery::~UDPWFDServiceDiscovery() {
 }
 
 void UDPWFDServiceDiscovery::finish() {
-    recordScalar("Detected IP Conflicts", numDetectedIpConflicts);
+    recordScalar("Resolved IP Conflicts", numResolvedIpConflicts);
     recordScalar("Request Packets Received", numRequestRcvd);
     recordScalar("Response Packets Received", numResponseRcvd);
     recordScalar("Request Packets Sent", numRequestSent);
     recordScalar("Response Packets Sent", numResponseSent);
+    recordScalar("Num of Times GO", numOfTimesGO);
+    recordScalar("Num of Times GM", numOfTimesGM);
+    recordScalar("Num of Times PM", numOfTimesPM);
     recordScalar("Num of Times Orphaned", numOfTimesOrphaned);
 
     UDPBasicApp::finish();
@@ -201,6 +204,8 @@ void UDPWFDServiceDiscovery::resetDevice() {
         map = clpBrd->getHeartBeatMapServer();
         if (map)
             map->clear();
+
+        clpBrd->setProxySsid("");
     }
 
 }
@@ -212,6 +217,15 @@ void UDPWFDServiceDiscovery::processStart() {
     resetDevice();
     protocolMsg->setKind(DECLARE_GO);
     scheduleAt(simTime() + declareGoPeriod, protocolMsg);
+}
+
+bool UDPWFDServiceDiscovery::handleNodeShutdown(IDoneCallback* doneCallback) {
+    UDPBasicApp::handleNodeShutdown(doneCallback);
+
+    if (protocolMsg)
+        cancelEvent(protocolMsg);
+
+    return true;
 }
 
 bool UDPWFDServiceDiscovery::shouldBeGO() {
@@ -256,6 +270,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                 setApIpAddress();
                 setDhcpServerParams();
                 turnDhcpServerOn();
+                numOfTimesGO++;
 
                 //Add an entry for stats collection
                 if (groupStatistics) {
@@ -278,6 +293,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                     switchDhcpClientToGroup();
                     turnDhcpClientOn();
                     turnTcpMgmtClientAppOn();
+                    numOfTimesGM++;
 
                     //Add an entry for stats collection
                     if (groupStatistics) {
@@ -308,6 +324,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                         changeProxySSID(pSsid.c_str());
                         turnProxyInterfaceOn();
                         switchDhcpClientToProxy();
+                        numOfTimesPM++;
 
                         //Add an entry for stats collection
                         if (groupStatistics) {
@@ -570,6 +587,11 @@ void UDPWFDServiceDiscovery::changeProxySSID(const char* ssid) {
 }
 
 void UDPWFDServiceDiscovery::switchDhcpClientToProxy() {
+    //Exit if no proxyInterface is defined, which means we do not have a NIC for proxy in this simScenario
+    if (opp_strcmp(par("proxyInterface").stringValue(), "") == 0) {
+        return;
+    }
+
     if (dhcpClient != nullptr)
         if (opp_strcmp(dhcpClient->par("interface").stringValue(),
                 par("groupInterface").stringValue()) == 0)
@@ -578,6 +600,11 @@ void UDPWFDServiceDiscovery::switchDhcpClientToProxy() {
 }
 
 void UDPWFDServiceDiscovery::switchDhcpClientToGroup() {
+    //Exit if no groupInterface is defined, which means we do not have a NIC for p2p in this simScenario
+    if (opp_strcmp(par("groupInterface").stringValue(), "") == 0) {
+        return;
+    }
+
     if (dhcpClient != nullptr)
         if (opp_strcmp(dhcpClient->par("interface").stringValue(),
                 par("proxyInterface").stringValue()) == 0)
@@ -836,7 +863,7 @@ string UDPWFDServiceDiscovery::getConflictFreeSubnet() {
     while (subnetConflicting()) {
         proSubnet = proposeSubnet();
         myInfo.proposedSubnet = proSubnet;
-        numDetectedIpConflicts++;
+        numResolvedIpConflicts++;
     }
     return proSubnet;
 }
