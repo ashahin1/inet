@@ -93,9 +93,9 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
         ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"),
                 this);
 
-        energyStorage = dynamic_cast<EnergyStorageBase *>(device->getSubmodule(
+        energyStorage = dynamic_cast<EpEnergyStorageBase *>(device->getSubmodule(
                 "energyStorage"));
-        energyGenerator = dynamic_cast<IEnergyGenerator *>(device->getSubmodule(
+        energyGenerator = dynamic_cast<IEpEnergyGenerator *>(device->getSubmodule(
                 "energyGenerator"));
 
         declareGoPeriod = par("declareGoPeriod");
@@ -655,8 +655,8 @@ void UDPWFDServiceDiscovery::setDhcpServerParams() {
 void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
     //myInfo.deviceId is updated in initialize;
     if (energyStorage != nullptr) {
-        myInfo.batteryCapacity = energyStorage->getNominalCapacity().get();
-        myInfo.batteryLevel = energyStorage->getResidualCapacity().get()
+        myInfo.batteryCapacity = energyStorage->getNominalEnergyCapacity().get();
+        myInfo.batteryLevel = energyStorage->getResidualEnergyCapacity().get()
                 / myInfo.batteryCapacity;
     }
     double genPower = 0;

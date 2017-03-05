@@ -20,7 +20,7 @@
 #include "inet/applications/udpapp/UDPBasicApp.h"
 #include "inet/applications/common/ClipBoard.h"
 #include "inet/applications/udpapp/ServiceDiscoveryPacket_m.h"
-#include "inet/power/base/EnergyStorageBase.h"
+#include "inet/power/base/EpEnergyStorageBase.h"
 #include "inet/common/lifecycle/LifecycleController.h"
 #include "inet/common/wfd/GroupStatistics.h"
 
@@ -70,8 +70,8 @@ protected:
     GoDeclarationTypes goDeclarationType;
 
     IInterfaceTable *ift = nullptr;
-    EnergyStorageBase *energyStorage = nullptr;
-    IEnergyGenerator *energyGenerator = nullptr;
+    EpEnergyStorageBase *energyStorage = nullptr;
+    IEpEnergyGenerator *energyGenerator = nullptr;
 
     cModule *device = nullptr;
     cModule *dhcpClient = nullptr;
