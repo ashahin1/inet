@@ -20,7 +20,6 @@
 #include "inet/networklayer/common/L3AddressResolver.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/lifecycle/NodeOperations.h"
-#include "/home/ahmed/or-tools/include/algorithms/hungarian.h"
 
 #include <vector>
 
@@ -61,9 +60,40 @@ void TCPMgmtSrvApp::initialize(int stage) {
             mySSID = apNic->getSubmodule("mgmt")->par("ssid").stringValue();
         }
 
+        selectProxyAssignmentType();
+
         ttlMsg = new cMessage("ttlMsg");
         ttlMsg->setKind(TTL_MSG);
     }
+}
+
+bool TCPMgmtSrvApp::handleOperationStage(LifecycleOperation* operation,
+        int stage, IDoneCallback* doneCallback) {
+    Enter_Method_Silent();
+    if (dynamic_cast<NodeStartOperation *>(operation)) {
+        if ((NodeStartOperation::Stage)stage == NodeStartOperation::STAGE_APPLICATION_LAYER) {
+            if(!isOperational) {
+                reopenSocket();
+            }
+            isOperational = true;
+        }
+    }
+    else if (dynamic_cast<NodeShutdownOperation *>(operation)) {
+        if ((NodeShutdownOperation::Stage)stage == NodeShutdownOperation::STAGE_APPLICATION_LAYER) {
+            isOperational = false;
+            closeSocket();
+        }
+    }
+    else if (dynamic_cast<NodeCrashOperation *>(operation)) {
+        if ((NodeCrashOperation::Stage)stage == NodeCrashOperation::STAGE_CRASH) {
+            isOperational = false;
+            closeSocket();
+        }
+    }
+    else {
+        throw cRuntimeError("Unsupported lifecycle operation '%s'", operation->getClassName());
+    }
+    return true;
 }
 
 void TCPMgmtSrvApp::handleMessage(cMessage* msg) {
@@ -79,13 +109,55 @@ void TCPMgmtSrvApp::handleMessage(cMessage* msg) {
 
             scheduleAt(simTime() + par("decTtlPeriod"), msg);
         } else {
-            TCPGenericSrvApp::handleMessage(msg);
+            //Let's try to avoid any socket operation while we are closed
+            if (isOperational) {
+                TCPGenericSrvApp::handleMessage(msg);
+            } else {
+                delete msg;
+            }
         }
     } else {
         heartBeatMap.clear();
         if (msg->getKind() != TTL_MSG) {
             delete msg;
         }
+    }
+}
+
+
+void TCPMgmtSrvApp::closeSocket() {
+    if (socketListening) {
+        socket.close();
+        socketListening = false;
+    }
+}
+
+void TCPMgmtSrvApp::reopenSocket() {
+    const char *localAddress = par("localAddress");
+    int localPort = par("localPort");
+
+    socket = TCPSocket();
+    socket.setOutputGate(gate("tcpOut"));
+    socket.setDataTransferMode(TCP_TRANSFER_OBJECT);
+    socket.bind(
+            localAddress[0] ?
+                    L3AddressResolver().resolve(localAddress) : L3Address(),
+            localPort);
+    socket.listen();
+    socketListening = true;
+}
+
+void TCPMgmtSrvApp::selectProxyAssignmentType() {
+    string pType = par("proxyAssignmentType").stringValue();
+
+    if (pType.compare("MUNKRES") == 0) {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_MUNKRES;
+    } else if (pType.compare("FIRST_AVAILABLE") == 0) {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_FIRST_AVAILABLE;
+    } else if (pType.compare("RANDOM") == 0) {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_RANDOM;
+    } else {
+        proxyAssignmentType = ProxyAssignmentTypes::PAT_MUNKRES;
     }
 }
 
@@ -264,37 +336,188 @@ HeartBeatMap TCPMgmtSrvApp::getPxAssignmentMap(int devID) {
     return hbMap;
 }
 
-void TCPMgmtSrvApp::calcPxAssignments() {
-    pxAssignment.clear();
-    peersInfo = clpBrd->getPeersInfo();
-    //Do the actual calculation
-    map<string, int> ssidCoverage;
-
+void TCPMgmtSrvApp::buildSsidCoverage(map<string, int>& ssidCoverage) {
     //build a map that have the number of GMs that cover each SSID
     for (auto& hbMap : heartBeatMap) {
         for (int i = 0; i < hbMap.second.reachableSSIDs.size(); i++) {
             string ssid = hbMap.second.reachableSSIDs[i];
-
             if (ssidCoverage.count(ssid) == 0) {
                 ssidCoverage[ssid] = 1;
             } else {
                 ssidCoverage[ssid] = ++ssidCoverage[ssid];
             }
         }
-    }        // note that the values stored in this map are not utilized yet
+    }
+    // note that the values stored in this map are not utilized yet
+}
 
-    map<int, int> membersCoverage;
-
+void TCPMgmtSrvApp::buildMembersCoverage(map<int, int>& membersCoverage) {
     //build a map that have the number of SSIDs that each GM covers
     for (auto& hbMap : heartBeatMap) {
         //Exclude the GO itself from being added to the map
         if (hbMap.first != myHeartBeatRecord.devId) {
             int ssidCount = hbMap.second.reachableSSIDs.size();
-
             membersCoverage[hbMap.first] = ssidCount;
         }
+    }
+}
 
-    }        // note that the values stored in this map are not utilized yet
+void TCPMgmtSrvApp::populateCostMatrix(const vector<string>& ssidList,
+        const vector<int>& membersList, vector<vector<double> >& cost) {
+    //Preparing the cost matrix
+    EV_DETAIL << "\nCost Matrix is As Follows:\n";
+    //Header
+    for (int j = 0; j < ssidList.size(); j++) {
+        EV_DETAIL << "\t" << ssidList[j];
+    }
+    //loop through all GMs that have nearby groups
+    for (const int& mID : membersList) {
+        //Create a row for the cost matrix
+        vector<double> tmpRow;
+        //loop through each possible ssid
+        for (const string& gSsid : ssidList) {
+            //make sure that the current GM can reach the current ssid
+            bool canReach = canReachSsid(mID, gSsid);
+            if (canReach) {
+                double gm_cost = 0.0f;
+                //We will use the same rank that we used before
+                //to select the GOs, which is already available
+                //from the previous step
+                DeviceInfo* devInfo = &((*peersInfo)[mID]);
+                gm_cost = clpBrd->getRank(*devInfo);
+                /*
+                 //Adjust the cost by adding a very small random number
+                 //to break ties if the same device is the only device to cover
+                 //two or more groups
+                 double tieBreaker = drand48();// * 0.01f;
+                 double adjustedCost = gm_cost * 1000 + tieBreaker * 10;
+                 */
+                //Note here that the cost is represented by the rank
+                //The rank by definition is better when higher
+                tmpRow.push_back(gm_cost);
+            } else {
+                //We should here add a cost of a very small number to indicate that
+                //the current GM cannot reach the current SSID
+                //tmpRow.push_back(-INFINITY);
+                tmpRow.push_back(-9999999);
+            }
+        }
+        //Add the prepared row to the cost matrix
+        cost.push_back(tmpRow);
+        //Print row
+        EV_DETAIL << "\n" << mID;
+        for (int iii = 0; iii < tmpRow.size(); ++iii) {
+            EV_DETAIL << "\t\t" << tmpRow[iii];
+        }
+    }
+}
+
+void TCPMgmtSrvApp::populatePxAssignmentMunkres(
+        hash_map<int, int> direct_assignment, const vector<int>& membersList,
+        const vector<string>& ssidList) {
+
+    EV_DETAIL << "\nReal Assignments Are As Follows:\n";
+    for (auto& da : direct_assignment) {
+        //Discard any assignments that are not valid
+        int devId = membersList[da.first];
+        string ssid = ssidList[da.second];
+        if (canReachSsid(devId, ssid)) {
+            EV_DETAIL << "\n" << devId << " ("
+                             << cSimulation::getActiveSimulation()->getModule(
+                                     devId)->getFullName() << ") " << "\t"
+                             << ssid;
+            //Adjust the assignment map, so it can be used to send assignments
+            pxAssignment[ssid] = devId;
+        }
+    }
+}
+
+void TCPMgmtSrvApp::populatePxAssignmentFirstAvailable(
+        const vector<string>& ssidList, const vector<int>& membersList) {
+    map<int, bool> deviceDoneMap;
+    for (const string& ssid : ssidList) {
+        for (const int& mId : membersList) {
+            //Check if the device can reach the ssid
+            if (canReachSsid(mId, ssid)) {
+                //check if we did not use it before
+                if (deviceDoneMap.count(mId) == 0) {
+                    //Adjust the assignment map, so it can be used to send assignments
+                    pxAssignment[ssid] = mId;
+                    //mark this device as done
+                    deviceDoneMap[mId] = true;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void TCPMgmtSrvApp::populatePxAssignmentRandom(const vector<string>& ssidList,
+        const vector<int>& membersList) {
+    map<int, bool> deviceDoneMap;
+    for (const string& ssid : ssidList) {
+        for (const int& mId : membersList) {
+            //Check if the device can reach the ssid
+            if (canReachSsid(mId, ssid)) {
+                //check if we did not use it before
+                if (deviceDoneMap.count(mId) == 0) {
+                    //Now we do a random guess to use this member or skip it.
+                    bool useDevice = (intrand(2, 0) % 2 == 1);
+                    if (useDevice) {
+                        //Adjust the assignment map, so it can be used to send assignments
+                        pxAssignment[ssid] = mId;
+                        //mark this device as done
+                        deviceDoneMap[mId] = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void TCPMgmtSrvApp::populatePxAssignments(vector<string> ssidList,
+        vector<int> membersList) {
+    if (proxyAssignmentType == ProxyAssignmentTypes::PAT_MUNKRES) {
+        //Declare some variables that are needed by the Munkres algorithm implementation
+        vector<vector<double> > cost;
+        hash_map<int, int> direct_assignment;
+        hash_map<int, int> reverse_assignment;
+        //Preparing the cost matrix
+        populateCostMatrix(ssidList, membersList, cost);
+        //Now we start the Munkres (Hungarian) algorithm
+        //We need to maximize the cost of assignments in this case
+        operations_research::MaximizeLinearAssignment(cost, &direct_assignment,
+                &reverse_assignment);
+        //Now preparing the assignment map that will be used to notify members
+        //about their assignments
+        populatePxAssignmentMunkres(direct_assignment, membersList, ssidList);
+    } else if (proxyAssignmentType
+            == ProxyAssignmentTypes::PAT_FIRST_AVAILABLE) {
+        //Use the first available method where we assign to a group the first member in the
+        // list that can reach it. If the member is already assigned to another group, we
+        // skip it and go for the next one.
+        populatePxAssignmentFirstAvailable(ssidList, membersList);
+    } else if (proxyAssignmentType == ProxyAssignmentTypes::PAT_RANDOM) {
+        //We use the same technique as in FirstAvailable, but instead of selecting the member that comes first,
+        // we draw a random variable and use it to check if we use it or skip it
+        populatePxAssignmentRandom(ssidList, membersList);
+    }
+}
+
+void TCPMgmtSrvApp::calcPxAssignments() {
+    pxAssignment.clear();
+    peersInfo = clpBrd->getPeersInfo();
+
+    //Do the actual calculation
+
+    map<string, int> ssidCoverage;
+    //build a map that have the number of GMs that cover each SSID
+    buildSsidCoverage(ssidCoverage);
+
+    map<int, int> membersCoverage;
+    //build a map that have the number of SSIDs that each GM covers
+    buildMembersCoverage(membersCoverage);
 
     vector<string> ssidList;
     vector<int> membersList;
@@ -316,84 +539,10 @@ void TCPMgmtSrvApp::calcPxAssignments() {
         }
     }
 
-    //Declare some variables that are needed by the Munkres algorithm implementation
-    vector<vector<double> > cost;
-    hash_map<int, int> direct_assignment;
-    hash_map<int, int> reverse_assignment;
-
-    //Preparing the cost matrix
-    EV_DETAIL << "\nCost Matrix is As Follows:\n";
-    //Header
-    for (int j = 0; j < ssidList.size(); j++) {
-
-        EV_DETAIL << "\t" << ssidList[j];
-    }
-
-    //loop through all GMs that have nearby groups
-    for (const int& mID : membersList) {
-        //Create a row for the cost matrix
-        vector<double> tmpRow;
-        //loop through each possible ssid
-        for (const string& gSsid : ssidList) {
-            //make sure that the current GM can reach the current ssid
-            bool canReach = canReachSsid(mID, gSsid);
-
-            if (canReach) {
-                double gm_cost = 0.0f;
-                //We will use the same rank that we used before
-                //to select the GOs, which is already available
-                //from the previous step
-                DeviceInfo *devInfo = &((*peersInfo)[mID]);
-                gm_cost = clpBrd->getRank(*devInfo);
-
-                /*
-                 //Adjust the cost by adding a very small random number
-                 //to break ties if the same device is the only device to cover
-                 //two or more groups
-                 double tieBreaker = drand48();// * 0.01f;
-                 double adjustedCost = gm_cost * 1000 + tieBreaker * 10;
-                 */
-
-                //Note here that the cost is represented by the rank
-                //The rank by definition is better when higher
-                tmpRow.push_back(gm_cost);
-
-            } else {
-                //We should here add a cost of a very small number to indicate that
-                //the current GM cannot reach the current SSID
-                //tmpRow.push_back(-INFINITY);
-                tmpRow.push_back(-9999999);
-            }
-        }
-        //Add the prepared row to the cost matrix
-        cost.push_back(tmpRow);
-
-        //Print row
-        EV_DETAIL << "\n" << mID;
-        for (int iii = 0; iii < tmpRow.size(); ++iii) {
-            EV_DETAIL << "\t\t" << tmpRow[iii];
-        }
-    }
-
-    //Now we start the Munkres (Hungarian) algorithm
-    //We need to maximize the cost of assignments in this case
-    operations_research::MaximizeLinearAssignment(cost, &direct_assignment,
-            &reverse_assignment);
-
-    EV_DETAIL << "\nReal Assignments Are As Follows:\n";
-    for (auto& da : direct_assignment) {
-        //Discard any assignments that are not valid
-        int devId = membersList[da.first];
-        string ssid = ssidList[da.second];
-        if (canReachSsid(devId, ssid)) {
-            EV_DETAIL << "\n" << devId << " ("
-                             << cSimulation::getActiveSimulation()->getModule(
-                                     devId)->getFullName() << ") " << "\t"
-                             << ssid;
-            //Adjust the assignment map, so it can be used to send assignments
-            pxAssignment[ssid] = devId;
-        }
-    }
+    //Populate the pxAssignmentMap according to the selected policy.
+    //We have to compare our approach to a baseline, so we introduced
+    // two more approaches, first available, and random
+    populatePxAssignments(ssidList, membersList);
 }
 
 bool TCPMgmtSrvApp::canReachSsid(int devId, string ssid) {
@@ -406,7 +555,6 @@ bool TCPMgmtSrvApp::canReachSsid(int devId, string ssid) {
         }
     }
     return found;
-
 }
 
 } /* namespace inet */

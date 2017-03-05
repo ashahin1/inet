@@ -30,6 +30,12 @@ using namespace ieee80211;
 
 Define_Module(UDPWFDServiceDiscovery);
 
+simsignal_t UDPWFDServiceDiscovery::membersChangedSignal =
+        cComponent::registerSignal("membersChanged");
+
+simsignal_t UDPWFDServiceDiscovery::endToEndDelaySignal =
+        cComponent::registerSignal("endToEndDelay");
+
 UDPWFDServiceDiscovery::UDPWFDServiceDiscovery() {
     // TODO Auto-generated constructor stub
 
@@ -41,11 +47,14 @@ UDPWFDServiceDiscovery::~UDPWFDServiceDiscovery() {
 }
 
 void UDPWFDServiceDiscovery::finish() {
-    recordScalar("IP Conflicts", numIpConflicts);
+    recordScalar("Resolved IP Conflicts", numResolvedIpConflicts);
     recordScalar("Request Packets Received", numRequestRcvd);
     recordScalar("Response Packets Received", numResponseRcvd);
     recordScalar("Request Packets Sent", numRequestSent);
     recordScalar("Response Packets Sent", numResponseSent);
+    recordScalar("Num of Times GO", numOfTimesGO);
+    recordScalar("Num of Times GM", numOfTimesGM);
+    recordScalar("Num of Times PM", numOfTimesPM);
     recordScalar("Num of Times Orphaned", numOfTimesOrphaned);
 
     UDPBasicApp::finish();
@@ -70,6 +79,8 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
                 par("dhcpServerAppName").stringValue());
         tcpMgmtClientApp = device->getModuleByPath(
                 par("tcpMgmtClientAppName").stringValue());
+        tcpMgmtSrvApp = device->getModuleByPath(
+                par("tcpMgmtSrvAppName").stringValue());
         sdNic = device->getModuleByPath(par("sdNicName").stringValue());
         apNic = device->getModuleByPath(par("ApNicName").stringValue());
         if (apNic != nullptr) {
@@ -92,17 +103,52 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
         switchDhcpPeriod = par("switchDhcpPeriod");
         tearDownPeriod = par("tearDownPeriod");
 
+        selectSubnetProposalType();
+        selectGoDeclarationType();
+
         updateMyInfo(false);
         myInfo.deviceId = device->getId();
 
-        endToEndDelayVec.setName("SrvDsc End-to-End Delay");
         protocolMsg = new cMessage("Protocol Message");
         clpBrd->protocolMsg = protocolMsg;
         clpBrd->isGroupOwner = &isGroupOwner;
 
         WATCH(myInfo.proposedSubnet);
         WATCH(isGroupOwner);
+
+        emit(membersChangedSignal, numOfAssociatedMembers);
     }
+}
+
+void UDPWFDServiceDiscovery::selectSubnetProposalType() {
+    string sType = par("subnetProposalType").stringValue();
+
+    if (sType.compare("ISNP") == 0) {
+        subnetProposalType = SubnetProposalTypes::SPT_ISNP;
+    } else if (sType.compare("NO_CONFLICT_DETECTION") == 0) {
+        subnetProposalType = SubnetProposalTypes::SPT_NO_CONFLICT_DETECTION;
+    } else {
+        subnetProposalType = SubnetProposalTypes::SPT_ISNP;
+    }
+}
+
+void UDPWFDServiceDiscovery::selectGoDeclarationType() {
+    string gType = par("goDeclarationMethod").stringValue();
+
+    if (gType.compare("EMC") == 0) {
+        goDeclarationType = GoDeclarationTypes::GDT_EMC;
+    } else if (gType.compare("EMC_TWO_HOP") == 0) {
+        goDeclarationType = GoDeclarationTypes::GDT_EMC_TWO_HOP;
+    } else if (gType.compare("RANDOM") == 0) {
+        goDeclarationType = GoDeclarationTypes::GDT_RANDOM;
+    } else {
+        goDeclarationType = GoDeclarationTypes::GDT_EMC_TWO_HOP;
+    }
+}
+
+int UDPWFDServiceDiscovery::getNumberOfMembers() const {
+    int numGMs = (apMgmt ? apMgmt->getNumOfStation() : 0);
+    return numGMs;
 }
 
 void UDPWFDServiceDiscovery::refreshDisplay() const {
@@ -115,7 +161,7 @@ void UDPWFDServiceDiscovery::refreshDisplay() const {
 
     char buf2[80];
     if (isGroupOwner) {
-        int numGMs = (apMgmt ? apMgmt->getNumOfStation() : 0);
+        int numGMs = getNumberOfMembers();
         sprintf(buf2, "GO (%d)", numGMs);
     } else {
         if (isOrphaned) {
@@ -160,6 +206,8 @@ void UDPWFDServiceDiscovery::resetDevice() {
         map = clpBrd->getHeartBeatMapServer();
         if (map)
             map->clear();
+
+        clpBrd->setProxySsid("");
     }
 
 }
@@ -171,6 +219,35 @@ void UDPWFDServiceDiscovery::processStart() {
     resetDevice();
     protocolMsg->setKind(DECLARE_GO);
     scheduleAt(simTime() + declareGoPeriod, protocolMsg);
+}
+
+bool UDPWFDServiceDiscovery::handleNodeShutdown(IDoneCallback* doneCallback) {
+    UDPBasicApp::handleNodeShutdown(doneCallback);
+
+    if (protocolMsg)
+        cancelEvent(protocolMsg);
+
+    return true;
+}
+
+bool UDPWFDServiceDiscovery::shouldBeGO() {
+    bool isGo = false;
+
+    switch (goDeclarationType) {
+    case GoDeclarationTypes::GDT_EMC:
+        isGo = (getBestRankDevice() == nullptr);
+        break;
+    case GoDeclarationTypes::GDT_EMC_TWO_HOP:
+        isGo = (myInfo.deviceId == myInfo.proposedGO);
+        break;
+    case GoDeclarationTypes::GDT_RANDOM:
+        isGo = (intrand(2, 0) % 2 == 1);
+        break;
+    default:
+        break;
+    }
+
+    return isGo;
 }
 
 void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
@@ -187,7 +264,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             //  declare my self as GO to start sending SAP info
             //
             updateMyInfo(true);
-            isGroupOwner = (myInfo.deviceId == myInfo.proposedGO); //getBestRankDevice() == nullptr;
+            isGroupOwner = shouldBeGO();
             if (isGroupOwner) {
                 if (subnetConflicting())
                     getConflictFreeSubnet();
@@ -195,10 +272,13 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                 setApIpAddress();
                 setDhcpServerParams();
                 turnDhcpServerOn();
+                turnTcpMgmtSrvAppOn();
+                numOfTimesGO++;
 
                 //Add an entry for stats collection
                 if (groupStatistics) {
                     groupStatistics->addGO(myInfo.deviceId, myInfo.ssid);
+                    groupStatistics->addSubnet(myInfo.proposedSubnet);
                 }
             }
 
@@ -216,6 +296,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                     switchDhcpClientToGroup();
                     turnDhcpClientOn();
                     turnTcpMgmtClientAppOn();
+                    numOfTimesGM++;
 
                     //Add an entry for stats collection
                     if (groupStatistics) {
@@ -225,6 +306,9 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                     EV_INFO << "Orphaned Device Found";
                     isOrphaned = true;
                     numOfTimesOrphaned++;
+                    if (groupStatistics) {
+                        groupStatistics->addOrph(myInfo.deviceId);
+                    }
                 }
             }
 
@@ -243,6 +327,7 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
                         changeProxySSID(pSsid.c_str());
                         turnProxyInterfaceOn();
                         switchDhcpClientToProxy();
+                        numOfTimesPM++;
 
                         //Add an entry for stats collection
                         if (groupStatistics) {
@@ -261,6 +346,14 @@ void UDPWFDServiceDiscovery::handleMessageWhenUp(cMessage* msg) {
             scheduleAt(simTime() + declareGoPeriod, protocolMsg);
         } else {
             UDPBasicApp::handleMessageWhenUp(msg);
+        }
+
+        if (isGroupOwner) {
+            int mCount = getNumberOfMembers();
+            if (numOfAssociatedMembers != mCount) {
+                numOfAssociatedMembers = mCount;
+                emit(membersChangedSignal, numOfAssociatedMembers);
+            }
         }
 
     } else {
@@ -420,7 +513,7 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
         }
 
         if (eed != 0) {
-            endToEndDelayVec.record(eed);
+            emit(endToEndDelaySignal, eed);
             numResponseRcvd++;
         }
     }
@@ -453,6 +546,7 @@ void UDPWFDServiceDiscovery::turnModulesOff() {
         lifeCycleCtrl->processDirectCommand(dhcpClient, false);
         lifeCycleCtrl->processDirectCommand(dhcpServer, false);
         lifeCycleCtrl->processDirectCommand(tcpMgmtClientApp, false);
+        lifeCycleCtrl->processDirectCommand(tcpMgmtSrvApp, false);
         lifeCycleCtrl->processDirectCommand(apNic, false);
         lifeCycleCtrl->processDirectCommand(p2pNic, false);
         lifeCycleCtrl->processDirectCommand(proxyNic, false);
@@ -471,6 +565,10 @@ void UDPWFDServiceDiscovery::turnDhcpServerOn() {
 
 void UDPWFDServiceDiscovery::turnTcpMgmtClientAppOn() {
     lifeCycleCtrl->processDirectCommand(tcpMgmtClientApp, true);
+}
+
+void UDPWFDServiceDiscovery::turnTcpMgmtSrvAppOn() {
+    lifeCycleCtrl->processDirectCommand(tcpMgmtSrvApp, true);
 }
 
 void UDPWFDServiceDiscovery::turnApInterfaceOn() {
@@ -497,6 +595,11 @@ void UDPWFDServiceDiscovery::changeProxySSID(const char* ssid) {
 }
 
 void UDPWFDServiceDiscovery::switchDhcpClientToProxy() {
+    //Exit if no proxyInterface is defined, which means we do not have a NIC for proxy in this simScenario
+    if (opp_strcmp(par("proxyInterface").stringValue(), "") == 0) {
+        return;
+    }
+
     if (dhcpClient != nullptr)
         if (opp_strcmp(dhcpClient->par("interface").stringValue(),
                 par("groupInterface").stringValue()) == 0)
@@ -505,6 +608,11 @@ void UDPWFDServiceDiscovery::switchDhcpClientToProxy() {
 }
 
 void UDPWFDServiceDiscovery::switchDhcpClientToGroup() {
+    //Exit if no groupInterface is defined, which means we do not have a NIC for p2p in this simScenario
+    if (opp_strcmp(par("groupInterface").stringValue(), "") == 0) {
+        return;
+    }
+
     if (dhcpClient != nullptr)
         if (opp_strcmp(dhcpClient->par("interface").stringValue(),
                 par("proxyInterface").stringValue()) == 0)
@@ -585,6 +693,12 @@ void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
 }
 
 bool UDPWFDServiceDiscovery::myProposedGoNeedsUpdate() {
+    //For sack of comparison, we added the original EMC selection behavior and a RANDOM one.
+    //Thus, if we have any of these modes we do not need to update our proposed GO
+    if ((goDeclarationType == GoDeclarationTypes::GDT_EMC)
+            || (goDeclarationType == GoDeclarationTypes::GDT_RANDOM)) {
+        return false;
+    }
 
     if (myInfo.proposedGO == -1) {
         return true;
@@ -643,10 +757,17 @@ DeviceInfo *UDPWFDServiceDiscovery::getBestRankDevice() {
     double curRank;
     DeviceInfo *bestDevice = nullptr;
 
+    //For sack of comparison, we need to keep the old behavior of EMC as a choice
+    bool oldEMC = (goDeclarationType == GoDeclarationTypes::GDT_EMC);
+    bool newEMC = (goDeclarationType == GoDeclarationTypes::GDT_EMC_TWO_HOP);
+
     for (auto& pf : peersInfo) {
-        //check first if the device does not have another device that he sees that
+        //In case of EMC_TWO HOP, check first if the device does not have another device that he sees that
         //has a rank better than him.
-        if (pf.second.proposedGO == pf.second.deviceId) {
+
+        //In case of EMC, we do not need to perform such a check
+        if ((newEMC && (pf.second.proposedGO == pf.second.deviceId))
+                || oldEMC) {
             curRank = getRank(pf.second);
             if (curRank > bestRank) {
                 bestRank = curRank;
@@ -708,12 +829,15 @@ string UDPWFDServiceDiscovery::proposeSubnet() {
 
 string UDPWFDServiceDiscovery::getPeersConflictedSubnets() {
     string cfStr = "";
-    for (auto& pf1 : peersInfo) {
-        for (auto& pf2 : peersInfo) {
-            if (pf1.first != pf2.first) {
-                if (pf1.second.proposedSubnet.compare(pf2.second.proposedSubnet)
-                        == 0) {
-                    cfStr += pf1.second.proposedSubnet + ";";
+    //For the sack of comparing with a baseline, we added a no conflict detection option
+    if (subnetProposalType == SubnetProposalTypes::SPT_ISNP) {
+        for (auto& pf1 : peersInfo) {
+            for (auto& pf2 : peersInfo) {
+                if (pf1.first != pf2.first) {
+                    if (pf1.second.proposedSubnet.compare(
+                            pf2.second.proposedSubnet) == 0) {
+                        cfStr += pf1.second.proposedSubnet + ";";
+                    }
                 }
             }
         }
@@ -722,16 +846,23 @@ string UDPWFDServiceDiscovery::getPeersConflictedSubnets() {
 }
 
 bool UDPWFDServiceDiscovery::subnetConflicting() {
-    for (auto& pf : peersInfo) {
-        //Check if my subnet is in the detected conflicts of other devices
-        if (pf.second.conflictedSubnets.find(myInfo.proposedSubnet)
-                != string::npos)
-            return true;
+    //For the sack of comparing with a baseline, we added a no conflict detection option
+    if (subnetProposalType == SubnetProposalTypes::SPT_ISNP) {
+        for (auto& pf : peersInfo) {
+            //Check if my subnet is in the detected conflicts of other devices
+            if (pf.second.conflictedSubnets.find(myInfo.proposedSubnet)
+                    != string::npos)
+                return true;
 
-        //Check if my subnet is conflicting with proposed subnets of other devices
-        if (pf.second.proposedSubnet.compare(myInfo.proposedSubnet) == 0)
-            return true;
+            //Check if my subnet is conflicting with proposed subnets of other devices
+            if (pf.second.proposedSubnet.compare(myInfo.proposedSubnet) == 0)
+                return true;
+        }
+    } else if (subnetProposalType
+            == SubnetProposalTypes::SPT_NO_CONFLICT_DETECTION) {
+        return false;
     }
+
     return false;
 }
 
@@ -740,7 +871,7 @@ string UDPWFDServiceDiscovery::getConflictFreeSubnet() {
     while (subnetConflicting()) {
         proSubnet = proposeSubnet();
         myInfo.proposedSubnet = proSubnet;
-        numIpConflicts++;
+        numResolvedIpConflicts++;
     }
     return proSubnet;
 }

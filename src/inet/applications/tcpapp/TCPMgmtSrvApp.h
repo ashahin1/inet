@@ -20,6 +20,8 @@
 #include "inet/applications/common/ClipBoard.h"
 #include "inet/applications/tcpapp/TCPGenericSrvApp.h"
 
+#include "/home/ahmed/or-tools/include/algorithms/hungarian.h"
+
 namespace inet {
 
 using namespace std;
@@ -33,6 +35,8 @@ protected:
     cModule *apNic = nullptr;
     cModule *device = nullptr;
 
+    ProxyAssignmentTypes proxyAssignmentType;
+
     cMessage *ttlMsg = nullptr;
 
     DevicesInfo *peersInfo;
@@ -42,6 +46,9 @@ protected:
     PxAssignment pxAssignment;
 
     string mySSID = "";
+
+    bool isOperational = true;
+    bool socketListening = true;
 public:
     TCPMgmtSrvApp();
     virtual ~TCPMgmtSrvApp();
@@ -50,6 +57,7 @@ protected:
     virtual void sendBack(cMessage *msg) override;
     virtual void sendOrSchedule(cMessage *msg, simtime_t delay) override;
     virtual void handleMessage(cMessage *msg) override;
+    virtual bool handleOperationStage(LifecycleOperation *operation, int stage, IDoneCallback *doneCallback) override;
 
 private:
     void initMyHeartBeatRecord();
@@ -61,6 +69,23 @@ private:
     void calcPxAssignments();
     int getHbMsgSenderID(HeartBeatMsg* pxAssignMsg);
     bool canReachSsid(int devId, string ssid);
+    void selectProxyAssignmentType();
+    void buildSsidCoverage(std::map<string, int>& ssidCoverage);
+    void buildMembersCoverage(std::map<int, int>& membersCoverage);
+    void populateCostMatrix(const std::vector<string>& ssidList,
+            const std::vector<int>& membersList,
+            std::vector<vector<double> >& cost);
+    void populatePxAssignmentMunkres(hash_map<int, int> direct_assignment,
+            const std::vector<int>& membersList,
+            const std::vector<string>& ssidList);
+    void populatePxAssignmentFirstAvailable(const std::vector<string>& ssidList,
+            const std::vector<int>& membersList);
+    void populatePxAssignmentRandom(const std::vector<string>& ssidList,
+            const std::vector<int>& membersList);
+    void populatePxAssignments(std::vector<string> ssidList,
+            std::vector<int> membersList);
+    void reopenSocket();
+    void closeSocket();
 };
 
 } /* namespace inet */

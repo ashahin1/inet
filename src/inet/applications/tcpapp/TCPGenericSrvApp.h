@@ -21,6 +21,7 @@
 #include "inet/common/INETDefs.h"
 #include "inet/common/lifecycle/ILifecycle.h"
 #include "inet/common/lifecycle/LifecycleOperation.h"
+#include "inet/transportlayer/contract/tcp/TCPSocket.h"
 
 namespace inet {
 
@@ -40,6 +41,8 @@ class INET_API TCPGenericSrvApp : public cSimpleModule, public ILifecycle
     long msgsSent;
     long bytesRcvd;
     long bytesSent;
+
+    TCPSocket socket;
 
     // statistics:
     static simsignal_t rcvdPkSignal;

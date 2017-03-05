@@ -66,6 +66,7 @@ void SimpleEnergyStorage::initialize(int stage)
         }
         scheduleTimer();
         WATCH(residualCapacity);
+        WATCH(totalConsumedPower);
     }
 }
 
@@ -85,6 +86,7 @@ void SimpleEnergyStorage::setPowerConsumption(int energyConsumerId, W consumedPo
     Enter_Method_Silent();
     updateResidualCapacity();
     EnergySourceBase::setPowerConsumption(energyConsumerId, consumedPower);
+    emit(powerConsumptionChangedSignal, totalConsumedPower.get());
     scheduleTimer();
 }
 

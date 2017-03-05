@@ -31,6 +31,17 @@ using namespace std;
 using namespace ieee80211;
 
 class UDPWFDServiceDiscovery: public UDPBasicApp {
+public:
+    /**
+     * The signal that is used to publish changes in number of
+     * associated members
+     */
+    static simsignal_t membersChangedSignal;
+    /**
+     * The signal that is used to publish the delay between sending
+     * a request and receiving its response.
+     */
+    static simsignal_t endToEndDelaySignal;
 protected:
     GroupStatistics *groupStatistics = nullptr;
     ClipBoard *clpBrd = nullptr;
@@ -39,8 +50,12 @@ protected:
     int numResponseRcvd = 0;
     int numRequestSent = 0;
     int numRequestRcvd = 0;
-    int numIpConflicts = 0;
+    int numResolvedIpConflicts = 0;
     int numOfTimesOrphaned = 0;
+    int numOfTimesGO = 0;
+    int numOfTimesGM = 0;
+    int numOfTimesPM = 0;
+    int numOfAssociatedMembers = 0;
     bool isGroupOwner = false;
     bool isOrphaned = false;
     bool isGroupMember = false;
@@ -51,6 +66,9 @@ protected:
     simtime_t switchDhcpPeriod;
     simtime_t tearDownPeriod;
 
+    SubnetProposalTypes subnetProposalType;
+    GoDeclarationTypes goDeclarationType;
+
     IInterfaceTable *ift = nullptr;
     EnergyStorageBase *energyStorage = nullptr;
     IEnergyGenerator *energyGenerator = nullptr;
@@ -59,6 +77,7 @@ protected:
     cModule *dhcpClient = nullptr;
     cModule *dhcpServer = nullptr;
     cModule *tcpMgmtClientApp = nullptr;
+    cModule *tcpMgmtSrvApp = nullptr;
     cModule *sdNic = nullptr;
     cModule *apNic = nullptr;
     cModule *p2pNic = nullptr;
@@ -67,8 +86,6 @@ protected:
     Ieee80211MgmtAP *apMgmt = nullptr;
 
     cMessage *protocolMsg = nullptr;
-
-    cOutVector endToEndDelayVec;
 
     DevicesInfo peersInfo;
     DeviceInfo myInfo;
@@ -85,12 +102,14 @@ protected:
     virtual void handleMessageWhenUp(cMessage *msg) override;
     UDPSocket::SendOptions* setDatagramOutInterface();
     virtual void refreshDisplay() const override;
+    virtual bool handleNodeShutdown(IDoneCallback *doneCallback) override;
 
 private:
     void turnModulesOff();
     void turnDhcpClientOn();
     void turnDhcpServerOn();
     void turnTcpMgmtClientAppOn();
+    void turnTcpMgmtSrvAppOn();
     void turnApInterfaceOn();
     void turnP2pInterfaceOn();
     void turnProxyInterfaceOn();
@@ -124,6 +143,10 @@ private:
     void resetDevice();
     bool myProposedGoNeedsUpdate();
     void clearInterfaceIpAddress(string ifNamePar);
+    int getNumberOfMembers() const;
+    void selectSubnetProposalType();
+    void selectGoDeclarationType();
+    bool shouldBeGO();
 };
 
 } /* namespace inet */

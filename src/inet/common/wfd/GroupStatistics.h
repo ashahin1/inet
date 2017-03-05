@@ -37,11 +37,53 @@ struct GoInfo {
 
 typedef map<int, GoInfo> GoInfoMap;
 
+struct Compare {
+    int num;
+    Compare(const int& num) :
+            num(num) {
+    }
+};
+
+#ifndef INET_APPLICATIONS_UDPAPP_UDPWFDSERVICEDISCOVERY_H_
+bool operator==(const std::pair<string, int>&p, const Compare& c) {
+    return c.num == p.second;
+}
+bool operator==(const Compare& c, const std::pair<string, int>&p) {
+    return c.num == p.second;
+}
+#endif
+
 class GroupStatistics: public omnetpp::cSimpleModule {
+public:
+    /**
+     * The signal that is used to collect the number of GOs during each protocol run.
+     */
+    static simsignal_t goCountSignal;
+    /**
+     * The signal that is used to collect the number of GMs during each protocol run.
+     */
+    static simsignal_t gmCountSignal;
+    /**
+     * The signal that is used to collect the number of PMs during each protocol run.
+     */
+    static simsignal_t pmCountSignal;
+    /**
+     * The signal that is used to collect the number of Orphaned Members during each protocol run.
+     */
+    static simsignal_t orphCountSignal;
+    /**
+     * The signal that is used to collect the number of Orphaned Members during each protocol run.
+     */
+    static simsignal_t connectedComponectCountSignal;
+    /**
+     * The signal that is used to collect the number of subnet conflicts (after settling) during each protocol run.
+     */
+    static simsignal_t conflictCountSignal;
 protected:
     int goCount;
     int gmCount;
     int pmCount;
+    int orphCount;
     int connectedComponentCount;
 
     int numDevices;
@@ -53,7 +95,6 @@ protected:
 
     //vectors for stats recording
 
-
     cMessage *validDataMsg = nullptr;
     cMessage *resetMsg = nullptr;
 
@@ -61,7 +102,15 @@ protected:
     map<string, int> ssidToDevIdMap; //caches the GOs ssids and their id mapping
     map<int, int> devIdToIndexMap; //Maps devIds to indexes starting from 0 .. noOfNodes-1
     int curIndex;
-    hash_map<int, std::vector<int> > group;
+    hash_map<int, std::vector<int> > group; //A map that holds each connected component members.
+
+    vector<int> orphanedList; //A map that hold the list of orphaned devices
+
+    // A map that holds the number of conflicts per each subnet
+    // Here we let each GO records its subnet and we increase the count for it
+    // if a subnet has a count > 1 it means we have a conflict in the assignment.
+    map<string, int> assignedSubnetCount;
+    int conflictCount;
 
 public:
     GroupStatistics();
@@ -69,21 +118,27 @@ public:
     void addGO(int devId, string ssid);
     void addGM(int devId, string goSsid);
     void addPM(int devId, string goSsid);
+    void addOrph(int devId);
+    void addSubnet(string subnet);
     int getGmCount() const;
     int getGoCount() const;
     int getPmCount() const;
     void clearAll();
+    void updateConlictCount();
     void writeGroupStats();
     void recordGroupStats();
     string getModuleNameFromId(int id);
     string getModuleNameFromIndex(int index);
     int getConnectedComponentCount() const;
     void calcGraphConnectivity();
+    int getConflictCount() const;
+    int getOrphCount() const;
 
 protected:
     virtual void initialize(int stage) override;
     virtual void refreshDisplay() const override;
     virtual void handleMessage(cMessage *msg) override;
+    virtual void finish() override;
 };
 
 } /* namespace inet */

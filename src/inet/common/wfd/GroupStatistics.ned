@@ -22,7 +22,7 @@ simple GroupStatistics
 {
     parameters:
         int numDevices;
-        
+
         double sendInterval @unit(s) = default(5s);
         double declareGoPeriod @unit(s) = default(this.sendInterval * 10);
         double selectGoPeriod @unit(s) = default(this.declareGoPeriod);
@@ -30,4 +30,16 @@ simple GroupStatistics
         double tearDownPeriod @unit(s) = default(this.switchDhcpPeriod * 2);
 
         @display("i=block/users,black;is=s");
+        @signal[GoCount];
+        @statistic[GO_Count](title="Num of GOs"; source=GoCount; record=vector,last);
+        @signal[GmCount];
+        @statistic[GM_Count](title="Num of GMs"; source=GmCount; record=vector,last);
+        @signal[PmCount];
+        @statistic[PM_Count](title="Num of PMs"; source=PmCount; record=vector,last);
+        @signal[OrphCount];
+        @statistic[Orph_Count](title="Num of Orphs"; source=OrphCount; record=vector,last);
+        @signal[CcCount];
+        @statistic[CC_Count](title="Num of ConnComp"; source=CcCount; record=vector,last);
+        @signal[ConflictCount];
+        @statistic[Conflict_Count](title="Num of Conflicts"; source=ConflictCount; record=vector,last);
 }

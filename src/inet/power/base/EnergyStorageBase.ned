@@ -37,4 +37,5 @@ simple EnergyStorageBase like IEnergyStorage, IEnergySource, IEnergySink
         @statistic[powerConsumption](title="Power consumption"; source=powerConsumptionChanged; record=vector; interpolationmode=sample-hold);
         @statistic[powerGeneration](title="Power generation"; source=powerGenerationChanged; record=vector; interpolationmode=sample-hold);
         @statistic[residualCapacity](title="Residual capacity"; source=residualCapacityChanged; record=vector; interpolationmode=linear);
+        @statistic[totalConsumedPower](title="Overall Consumed Power"; source=powerConsumptionChanged; record=sum);
 }
