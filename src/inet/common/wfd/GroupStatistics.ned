@@ -22,7 +22,7 @@ simple GroupStatistics
 {
     parameters:
         int numDevices;
-
+        int numRunsToEndSim = default(-1); //No od protocol runs before ending the simulation
         double sendInterval @unit(s) = default(5s);
         double declareGoPeriod @unit(s) = default(this.sendInterval * 10);
         double selectGoPeriod @unit(s) = default(this.declareGoPeriod);
@@ -31,15 +31,15 @@ simple GroupStatistics
 
         @display("i=block/users,black;is=s");
         @signal[GoCount];
-        @statistic[GO_Count](title="Num of GOs"; source=GoCount; record=vector,last);
+        @statistic[GO_Count](title="Num of GOs"; source=GoCount; record=vector,last ,stats);
         @signal[GmCount];
-        @statistic[GM_Count](title="Num of GMs"; source=GmCount; record=vector,last);
+        @statistic[GM_Count](title="Num of GMs"; source=GmCount; record=vector,last,stats);
         @signal[PmCount];
-        @statistic[PM_Count](title="Num of PMs"; source=PmCount; record=vector,last);
+        @statistic[PM_Count](title="Num of PMs"; source=PmCount; record=vector,last,stats);
         @signal[OrphCount];
-        @statistic[Orph_Count](title="Num of Orphs"; source=OrphCount; record=vector,last);
+        @statistic[Orph_Count](title="Num of Orphs"; source=OrphCount; record=vector,last,stats);
         @signal[CcCount];
-        @statistic[CC_Count](title="Num of ConnComp"; source=CcCount; record=vector,last);
+        @statistic[CC_Count](title="Num of ConnComp"; source=CcCount; record=vector,last,stats);
         @signal[ConflictCount];
-        @statistic[Conflict_Count](title="Num of Conflicts"; source=ConflictCount; record=vector,last);
+        @statistic[Conflict_Count](title="Num of Conflicts"; source=ConflictCount; record=vector,last,stats);
 }

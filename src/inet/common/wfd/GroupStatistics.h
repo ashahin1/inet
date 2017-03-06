@@ -86,7 +86,10 @@ protected:
     int orphCount;
     int connectedComponentCount;
 
+    int curProtocolRun = 0;
+
     int numDevices;
+    int numRunsToEndSim;
     double sendInterval;
     double declareGoPeriod;
     double selectGoPeriod;

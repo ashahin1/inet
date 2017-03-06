@@ -93,10 +93,12 @@ void UDPWFDServiceDiscovery::initialize(int stage) {
         ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"),
                 this);
 
-        energyStorage = dynamic_cast<EpEnergyStorageBase *>(device->getSubmodule(
-                "energyStorage"));
-        energyGenerator = dynamic_cast<IEpEnergyGenerator *>(device->getSubmodule(
-                "energyGenerator"));
+        energyStorage =
+                dynamic_cast<EpEnergyStorageBase *>(device->getSubmodule(
+                        "energyStorage"));
+        energyGenerator =
+                dynamic_cast<IEpEnergyGenerator *>(device->getSubmodule(
+                        "energyGenerator"));
 
         declareGoPeriod = par("declareGoPeriod");
         selectGoPeriod = par("selectGoPeriod");
@@ -228,6 +230,12 @@ bool UDPWFDServiceDiscovery::handleNodeShutdown(IDoneCallback* doneCallback) {
         cancelEvent(protocolMsg);
 
     return true;
+}
+
+void UDPWFDServiceDiscovery::handleMessageWhenDown(cMessage* msg) {
+    //Try to handle the case when a scheduled msg is received when we are offline.
+    if (msg->isSelfMessage())
+        cancelEvent(msg);
 }
 
 bool UDPWFDServiceDiscovery::shouldBeGO() {
@@ -655,7 +663,8 @@ void UDPWFDServiceDiscovery::setDhcpServerParams() {
 void UDPWFDServiceDiscovery::updateMyInfo(bool devInfoOnly) {
     //myInfo.deviceId is updated in initialize;
     if (energyStorage != nullptr) {
-        myInfo.batteryCapacity = energyStorage->getNominalEnergyCapacity().get();
+        myInfo.batteryCapacity =
+                energyStorage->getNominalEnergyCapacity().get();
         myInfo.batteryLevel = energyStorage->getResidualEnergyCapacity().get()
                 / myInfo.batteryCapacity;
     }

@@ -24,18 +24,18 @@ using namespace operations_research;
 
 Define_Module(GroupStatistics);
 
-simsignal_t GroupStatistics::goCountSignal =
-        cComponent::registerSignal("GoCount");
-simsignal_t GroupStatistics::gmCountSignal =
-        cComponent::registerSignal("GmCount");
-simsignal_t GroupStatistics::pmCountSignal =
-        cComponent::registerSignal("PmCount");
-simsignal_t GroupStatistics::orphCountSignal =
-        cComponent::registerSignal("OrphCount");
+simsignal_t GroupStatistics::goCountSignal = cComponent::registerSignal(
+        "GoCount");
+simsignal_t GroupStatistics::gmCountSignal = cComponent::registerSignal(
+        "GmCount");
+simsignal_t GroupStatistics::pmCountSignal = cComponent::registerSignal(
+        "PmCount");
+simsignal_t GroupStatistics::orphCountSignal = cComponent::registerSignal(
+        "OrphCount");
 simsignal_t GroupStatistics::connectedComponectCountSignal =
         cComponent::registerSignal("CcCount");
-simsignal_t GroupStatistics::conflictCountSignal =
-        cComponent::registerSignal("ConflictCount");
+simsignal_t GroupStatistics::conflictCountSignal = cComponent::registerSignal(
+        "ConflictCount");
 
 GroupStatistics::GroupStatistics() {
     // TODO Auto-generated constructor stub
@@ -57,6 +57,7 @@ void GroupStatistics::finish() {
 
 void GroupStatistics::initialize(int stage) {
     numDevices = par("numDevices");
+    numRunsToEndSim = par("numRunsToEndSim");
     sendInterval = par("sendInterval").doubleValue();
     declareGoPeriod = par("declareGoPeriod").doubleValue();
     selectGoPeriod = par("selectGoPeriod").doubleValue();
@@ -310,6 +311,14 @@ void GroupStatistics::handleMessage(cMessage* msg) {
 
         scheduleAt(simTime() + tearDownPeriod, resetMsg);
     } else if (msg == resetMsg) {
+        curProtocolRun++;
+        //If we reached the desired number of protocol runs, end the simulation
+        //Of course if numRunsToEndSim = -1, this means there is no restriction on the number of protocol runs
+        if ((curProtocolRun >= numRunsToEndSim) && (numRunsToEndSim != -1)) {
+            endSimulation();
+            return;
+        }
+
         clearAll();
 
         scheduleAt(

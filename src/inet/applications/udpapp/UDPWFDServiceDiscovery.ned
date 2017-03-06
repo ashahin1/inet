@@ -46,7 +46,7 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
 
         //Parameters for comparing my approach to a base line
         string subnetProposalType @enum("ISNP","NO_CONFLICT_DETECTION") = default("ISNP");
-        string goDeclarationMethod @enum("EMC", "EMC_TWO_HOP" ,"RANDOM") = default("EMC_TWO_HOP");
+        string goDeclarationMethod @enum("EMC","EMC_TWO_HOP" ,"RANDOM") = default("EMC_TWO_HOP");
 
         packetName = default("ServiceDiscovery");
         receiveBroadcast = default(true);
@@ -56,6 +56,6 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
         @class(UDPWFDServiceDiscovery);
         @signal[membersChanged];
         @signal[endToEndDelay];
-        @statistic[numOfAssociatedMembers](title="Associated members count"; source=membersChanged; record=vector, last);
-        @statistic[endToEndDelay](title="Request to response delay"; source=endToEndDelay; record=vector,timeavg,max);
+        @statistic[numOfAssociatedMembers](title="Associated members count"; source=membersChanged; record=vector,last,stats);
+        @statistic[endToEndDelay](title="Request to response delay"; source=endToEndDelay; record=vector?,mean,max,stats);
 }

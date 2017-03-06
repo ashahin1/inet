@@ -100,6 +100,7 @@ protected:
     virtual void finish() override;
     virtual void processStart() override;
     virtual void handleMessageWhenUp(cMessage *msg) override;
+    virtual void handleMessageWhenDown(cMessage *msg) override;
     UDPSocket::SendOptions* setDatagramOutInterface();
     virtual void refreshDisplay() const override;
     virtual bool handleNodeShutdown(IDoneCallback *doneCallback) override;

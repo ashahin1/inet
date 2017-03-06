@@ -60,11 +60,11 @@ simple UDPBasicApp like IUDPApp
         @display("i=block/app");
         @signal[sentPk](type=cPacket);
         @signal[rcvdPk](type=cPacket);
-        @statistic[rcvdPk](title="packets received"; source=rcvdPk; record=count,"sum(packetBytes)","vector(packetBytes)"; interpolationmode=none);
+        @statistic[rcvdPk](title="packets received"; source=rcvdPk; record=count,"sum(packetBytes)","vector(packetBytes)"?; interpolationmode=none);
         @statistic[throughput](title="throughput"; unit=bps; source="throughput(rcvdPk)"; record=last);
-        @statistic[sentPk](title="packets sent"; source=sentPk; record=count,"sum(packetBytes)","vector(packetBytes)"; interpolationmode=none);
-        @statistic[rcvdPkLifetime](title="received packet lifetime"; source="messageAge(rcvdPk)"; unit=s; record=stats,vector; interpolationmode=none);
-        @statistic[rcvdPkSeqNo](title="received packet sequence number"; source="appPkSeqNo(rcvdPk)"; record=vector; interpolationmode=none);
+        @statistic[sentPk](title="packets sent"; source=sentPk; record=count,"sum(packetBytes)","vector(packetBytes)"?; interpolationmode=none);
+        @statistic[rcvdPkLifetime](title="received packet lifetime"; source="messageAge(rcvdPk)"; unit=s; record=stats,vector?; interpolationmode=none);
+        @statistic[rcvdPkSeqNo](title="received packet sequence number"; source="appPkSeqNo(rcvdPk)"; record=vector?; interpolationmode=none);
     gates:
         input udpIn @labels(UDPControlInfo/up);
         output udpOut @labels(UDPControlInfo/down);
