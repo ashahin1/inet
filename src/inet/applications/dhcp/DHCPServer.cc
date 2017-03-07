@@ -33,31 +33,29 @@ namespace inet {
 
 Define_Module(DHCPServer);
 
-DHCPServer::DHCPServer() {
+DHCPServer::DHCPServer()
+{
     ie = nullptr;
     startTimer = nullptr;
 }
 
-DHCPServer::~DHCPServer() {
+DHCPServer::~DHCPServer()
+{
     cancelAndDelete(startTimer);
 }
 
-void DHCPServer::initialize(int stage) {
+void DHCPServer::initialize(int stage)
+{
     if (stage == INITSTAGE_LOCAL) {
         startTimer = new cMessage("Start DHCP server", START_DHCP);
         startTime = par("startTime");
-    } else if (stage == INITSTAGE_APPLICATION_LAYER) {
+    }
+    else if (stage == INITSTAGE_APPLICATION_LAYER) {
         numSent = 0;
         numReceived = 0;
         WATCH(numSent);
         WATCH(numReceived);
         WATCH_MAP(leased);
-
-        subnetMask = IPv4Address(par("subnetMask").stringValue());
-        gateway = IPv4Address(par("gateway").stringValue());
-        ipAddressStart = IPv4Address(par("ipAddressStart").stringValue());
-        maxNumOfClients = par("maxNumClients");
-        leaseTime = par("leaseTime");
 
         // DHCP UDP ports
         clientPort = 68;    // client
@@ -66,17 +64,16 @@ void DHCPServer::initialize(int stage) {
         cModule *host = getContainingNode(this);
         host->subscribe(NF_INTERFACE_DELETED, this);
 
-        NodeStatus *nodeStatus = dynamic_cast<NodeStatus *>(host->getSubmodule(
-                "status"));
-        isOperational = (!nodeStatus)
-                || nodeStatus->getState() == NodeStatus::UP;
+        NodeStatus *nodeStatus = dynamic_cast<NodeStatus *>(host->getSubmodule("status"));
+        isOperational = (!nodeStatus) || nodeStatus->getState() == NodeStatus::UP;
 
         if (isOperational)
             startApp();
     }
 }
 
-void DHCPServer::openSocket() {
+void DHCPServer::openSocket()
+{
     if (!ie)
         throw cRuntimeError("Interface to listen does not exist. aborting");
     socket = UDPSocket();
@@ -87,77 +84,79 @@ void DHCPServer::openSocket() {
     socketOpened = true;
 }
 
-void DHCPServer::receiveSignal(cComponent *source, int signalID, cObject *obj) {
+void DHCPServer::receiveSignal(cComponent *source, int signalID, cObject *obj, cObject *details)
+{
     Enter_Method_Silent();
 
     if (signalID == NF_INTERFACE_DELETED) {
         if (isOperational) {
             InterfaceEntry *nie = check_and_cast<InterfaceEntry *>(obj);
             if (ie == nie)
-            throw cRuntimeError("Reacting to interface deletions is not implemented in this module");
+                throw cRuntimeError("Reacting to interface deletions is not implemented in this module");
         }
     }
     else
-    throw cRuntimeError("Unexpected signal: %s", getSignalName(signalID));
+        throw cRuntimeError("Unexpected signal: %s", getSignalName(signalID));
 }
 
-InterfaceEntry *DHCPServer::chooseInterface() {
-    IInterfaceTable *ift = getModuleFromPar<IInterfaceTable>(
-            par("interfaceTableModule"), this);
+InterfaceEntry *DHCPServer::chooseInterface()
+{
+    IInterfaceTable *ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
     const char *interfaceName = par("interface");
     InterfaceEntry *ie = nullptr;
 
     if (strlen(interfaceName) > 0) {
         ie = ift->getInterfaceByName(interfaceName);
         if (ie == nullptr)
-            throw cRuntimeError("Interface \"%s\" does not exist",
-                    interfaceName);
-    } else {
+            throw cRuntimeError("Interface \"%s\" does not exist", interfaceName);
+    }
+    else {
         // there should be exactly one non-loopback interface that we want to serve DHCP requests on
         for (int i = 0; i < ift->getNumInterfaces(); i++) {
             InterfaceEntry *current = ift->getInterface(i);
             if (!current->isLoopback()) {
                 if (ie)
-                    throw cRuntimeError(
-                            "Multiple non-loopback interfaces found, please select explicitly which one you want to serve DHCP requests on");
+                    throw cRuntimeError("Multiple non-loopback interfaces found, please select explicitly which one you want to serve DHCP requests on");
                 ie = current;
             }
         }
         if (!ie)
-            throw cRuntimeError(
-                    "No non-loopback interface found to be configured via DHCP");
+            throw cRuntimeError("No non-loopback interface found to be configured via DHCP");
     }
 
     return ie;
 }
 
-void DHCPServer::handleMessage(cMessage *msg) {
+void DHCPServer::handleMessage(cMessage *msg)
+{
     DHCPMessage *dhcpPacket = dynamic_cast<DHCPMessage *>(msg);
     if (msg->isSelfMessage()) {
         handleSelfMessages(msg);
-    } else if (dhcpPacket)
+    }
+    else if (dhcpPacket)
         processDHCPMessage(dhcpPacket);
     else {
         // note: unknown packets are likely ICMP errors in response to DHCP messages we sent out; just ignore them
-        EV_WARN << "Unknown packet '" << msg->getName() << "', discarding it."
-                       << endl;
+        EV_WARN << "Unknown packet '" << msg->getName() << "', discarding it." << endl;
         delete msg;
     }
 }
 
-void DHCPServer::handleSelfMessages(cMessage *msg) {
+void DHCPServer::handleSelfMessages(cMessage *msg)
+{
     if (msg->getKind() == START_DHCP) {
         openSocket();
-    } else
+    }
+    else
         throw cRuntimeError("Unknown selfmessage type!");
 }
 
-void DHCPServer::processDHCPMessage(DHCPMessage *packet) {
+void DHCPServer::processDHCPMessage(DHCPMessage *packet)
+{
     ASSERT(isOperational && ie != nullptr);
 
     // check that the packet arrived on the interface we are supposed to serve
-    UDPDataIndication *ctrl = check_and_cast<UDPDataIndication *>(
-            packet->removeControlInfo());
+    UDPDataIndication *ctrl = check_and_cast<UDPDataIndication *>(packet->removeControlInfo());
     int inputInterfaceId = ctrl->getInterfaceId();
     delete ctrl;
     if (inputInterfaceId != ie->getInterfaceId()) {
@@ -176,43 +175,41 @@ void DHCPServer::processDHCPMessage(DHCPMessage *packet) {
             DHCPLease *lease = getLeaseByMac(packet->getChaddr());
             if (!lease) {
                 // MAC not registered, create offering a new lease to the client
-                lease = getAvailableLease(packet->getOptions().getRequestedIp(),
-                        packet->getChaddr());
+                lease = getAvailableLease(packet->getOptions().getRequestedIp(), packet->getChaddr());
                 if (lease != nullptr) {
                     // std::cout << "MAC: " << packet->getChaddr() << " ----> IP: " << lease->ip << endl;
                     lease->mac = packet->getChaddr();
                     lease->xid = packet->getXid();
                     //lease->parameterRequestList = packet->getOptions().get(PARAM_LIST); TODO: !!
                     lease->leased = true;    // TODO
-                    sendOffer(lease);
-                } else
-                    EV_ERROR << "No lease available. Ignoring discover."
-                                    << endl;
-            } else {
+                    sendOffer(lease, packet);
+                }
+                else
+                    EV_ERROR << "No lease available. Ignoring discover." << endl;
+            }
+            else {
                 // MAC already exist, offering the same lease
                 lease->xid = packet->getXid();
                 //lease->parameterRequestList = packet->getOptions().get(PARAM_LIST); // TODO: !!
-                sendOffer(lease);
+                sendOffer(lease, packet);
             }
-        } else if (messageType == DHCPREQUEST) {    // RFC 2131, 4.3.2
+        }
+        else if (messageType == DHCPREQUEST) {    // RFC 2131, 4.3.2
             EV_INFO << "DHCPREQUEST arrived. Handling it." << endl;
 
             // check if the request was in response of an offering
-            if (packet->getOptions().getServerIdentifier()
-                    == ie->ipv4Data()->getIPAddress()) {
+            if (packet->getOptions().getServerIdentifier() == ie->ipv4Data()->getIPAddress()) {
                 // the REQUEST is in response to an offering (because SERVER_ID is filled)
                 // otherwise the msg is a request to extend an existing lease (e. g. INIT-REBOOT)
 
                 DHCPLease *lease = getLeaseByMac(packet->getChaddr());
                 if (lease != nullptr) {
                     if (lease->ip != packet->getOptions().getRequestedIp()) {
-                        EV_ERROR
-                                        << "The 'requested IP address' must be filled in with the 'yiaddr' value from the chosen DHCPOFFER."
-                                        << endl;
+                        EV_ERROR << "The 'requested IP address' must be filled in with the 'yiaddr' value from the chosen DHCPOFFER." << endl;
                         sendNAK(packet);
-                    } else {
-                        EV_INFO << "From now " << lease->ip << " is leased to "
-                                       << lease->mac << "." << endl;
+                    }
+                    else {
+                        EV_INFO << "From now " << lease->ip << " is leased to " << lease->mac << "." << endl;
                         lease->xid = packet->getXid();
                         lease->leaseTime = leaseTime;
                         lease->leased = true;
@@ -222,74 +219,61 @@ void DHCPServer::processDHCPMessage(DHCPMessage *packet) {
 
                         // TODO: update the display string to inform how many clients are assigned
                     }
-                } else {
-                    EV_ERROR << "There is no available lease for "
-                                    << packet->getChaddr()
-                                    << ". Probably, the client missed to send DHCPDISCOVER before DHCPREQUEST."
-                                    << endl;
+                }
+                else {
+                    EV_ERROR << "There is no available lease for " << packet->getChaddr() << ". Probably, the client missed to send DHCPDISCOVER before DHCPREQUEST." << endl;
                     sendNAK(packet);
                 }
-            } else {
+            }
+            else {
                 if (packet->getCiaddr().isUnspecified()) {    // init-reboot
                     // std::cout << "init-reboot" << endl;
-                    IPv4Address requestedAddress =
-                            packet->getOptions().getRequestedIp();
+                    IPv4Address requestedAddress = packet->getOptions().getRequestedIp();
                     auto it = leased.find(requestedAddress);
                     if (it == leased.end()) {
                         // if DHCP server has no record of the requested IP, then it must remain silent
                         // and may output a warning to the network admin
-                        EV_WARN << "DHCP server has no record of IP "
-                                       << requestedAddress << "." << endl;
-                    } else if (IPv4Address::maskedAddrAreEqual(requestedAddress,
-                            it->second.ip, subnetMask)) { // on the same network
+                        EV_WARN << "DHCP server has no record of IP " << requestedAddress << "." << endl;
+                    }
+                    else if (IPv4Address::maskedAddrAreEqual(requestedAddress, it->second.ip, subnetMask)) {    // on the same network
                         DHCPLease *lease = &it->second;
-                        EV_INFO
-                                       << "Initialization with known IP address (INIT-REBOOT) "
-                                       << lease->ip << " on " << lease->mac
-                                       << " was successful." << endl;
+                        EV_INFO << "Initialization with known IP address (INIT-REBOOT) " << lease->ip << " on " << lease->mac << " was successful." << endl;
                         lease->xid = packet->getXid();
                         lease->leaseTime = leaseTime;
                         lease->leased = true;
 
                         // TODO: final check before ACK (it is not necessary but recommended)
                         sendACK(lease, packet);
-                    } else {
-                        EV_ERROR
-                                        << "The requested IP address is incorrect, or is on the wrong network."
-                                        << endl;
+                    }
+                    else {
+                        EV_ERROR << "The requested IP address is incorrect, or is on the wrong network." << endl;
                         sendNAK(packet);
                     }
-                } else { // renewing or rebinding: in this case ciaddr must be filled in with client's IP address
+                }
+                else {    // renewing or rebinding: in this case ciaddr must be filled in with client's IP address
                     auto it = leased.find(packet->getCiaddr());
                     DHCPLease *lease = &it->second;
                     if (it != leased.end()) {
-                        EV_INFO << "Request for renewal/rebinding IP "
-                                       << lease->ip << " to " << lease->mac
-                                       << "." << endl;
+                        EV_INFO << "Request for renewal/rebinding IP " << lease->ip << " to " << lease->mac << "." << endl;
                         lease->xid = packet->getXid();
                         lease->leaseTime = leaseTime;
                         lease->leased = true;
 
                         // unicast ACK to ciaddr
                         sendACK(lease, packet);
-                    } else {
-                        EV_ERROR
-                                        << "Renewal/rebinding process failed: requested IP address "
-                                        << packet->getCiaddr()
-                                        << " not found in the server's database!"
-                                        << endl;
+                    }
+                    else {
+                        EV_ERROR << "Renewal/rebinding process failed: requested IP address " << packet->getCiaddr() << " not found in the server's database!" << endl;
                         sendNAK(packet);
                     }
                 }
             }
-        } else
-            EV_WARN
-                           << "BOOTREQUEST arrived, but DHCP message type is unknown. Dropping it."
-                           << endl;
-    } else {
-        EV_WARN
-                       << "Message opcode is unknown. This DHCP server only handles BOOTREQUEST messages. Dropping it."
-                       << endl;
+        }
+        else
+            EV_WARN << "BOOTREQUEST arrived, but DHCP message type is unknown. Dropping it." << endl;
+    }
+    else {
+        EV_WARN << "Message opcode is unknown. This DHCP server only handles BOOTREQUEST messages. Dropping it." << endl;
     }
 
     EV_DEBUG << "Deleting " << packet << "." << endl;
@@ -298,7 +282,8 @@ void DHCPServer::processDHCPMessage(DHCPMessage *packet) {
     numReceived++;
 }
 
-void DHCPServer::sendNAK(DHCPMessage *msg) {
+void DHCPServer::sendNAK(DHCPMessage *msg)
+{
     // EV_INFO << "Sending NAK to " << lease->mac << "." << endl;
     DHCPMessage *nak = new DHCPMessage("DHCPNAK");
     nak->setOp(BOOTREPLY);
@@ -314,10 +299,19 @@ void DHCPServer::sendNAK(DHCPMessage *msg) {
     nak->getOptions().setServerIdentifier(ie->ipv4Data()->getIPAddress());
     nak->getOptions().setMessageType(DHCPNAK);
 
-    sendToUDP(nak, serverPort, IPv4Address::ALLONES_ADDRESS, clientPort);
+    /* RFC 2131, 4.1
+     *
+     * In all cases, when 'giaddr' is zero, the server broadcasts any DHCPNAK
+     * messages to 0xffffffff.
+     */
+    IPv4Address destAddr = IPv4Address::ALLONES_ADDRESS;
+    if (!msg->getGiaddr().isUnspecified())
+        destAddr = msg->getGiaddr();
+    sendToUDP(nak, serverPort, destAddr, clientPort);
 }
 
-void DHCPServer::sendACK(DHCPLease *lease, DHCPMessage *packet) {
+void DHCPServer::sendACK(DHCPLease *lease, DHCPMessage *packet)
+{
     EV_INFO << "Sending the ACK to " << lease->mac << "." << endl;
 
     DHCPMessage *ack = new DHCPMessage("DHCPACK");
@@ -353,17 +347,36 @@ void DHCPServer::sendACK(DHCPLease *lease, DHCPMessage *packet) {
     // register the lease time
     lease->leaseTime = simTime();
 
-    if (packet->getGiaddr().isUnspecified()
-            && !packet->getCiaddr().isUnspecified())
-        sendToUDP(ack, serverPort, packet->getCiaddr(), clientPort);
-    else
-        sendToUDP(ack, serverPort,
-                lease->ip.makeBroadcastAddress(
-                        lease->subnetMask/*lease->ip.getNetworkMask()*/),
-                clientPort);
+    /* RFC 2131, 4.1
+     * If the 'giaddr' field in a DHCP message from a client is non-zero,
+     * the server sends any return messages to the 'DHCP server' port on the
+     * BOOTP relay agent whose address appears in 'giaddr'. If the 'giaddr'
+     * field is zero and the 'ciaddr' field is nonzero, then the server
+     * unicasts DHCPOFFER and DHCPACK messages to the address in 'ciaddr'.
+     * If 'giaddr' is zero and 'ciaddr' is zero, and the broadcast bit is
+     * set, then the server broadcasts DHCPOFFER and DHCPACK messages to
+     * 0xffffffff. If the broadcast bit is not set and 'giaddr' is zero and
+     * 'ciaddr' is zero, then the server unicasts DHCPOFFER and DHCPACK
+     * messages to the client's hardware address and 'yiaddr' address.
+     */
+    IPv4Address destAddr;
+    if (!packet->getGiaddr().isUnspecified())
+        destAddr = packet->getGiaddr();
+    else if (!packet->getCiaddr().isUnspecified())
+        destAddr = packet->getCiaddr();
+    else if (packet->getBroadcast())
+        destAddr = IPv4Address::ALLONES_ADDRESS;
+    else {
+        // TODO should send it to client's hardware address and yiaddr address, but the application can not set the destination MACAddress.
+        // destAddr = lease->ip;
+        destAddr = IPv4Address::ALLONES_ADDRESS;
+    }
+
+    sendToUDP(ack, serverPort, destAddr, clientPort);
 }
 
-void DHCPServer::sendOffer(DHCPLease *lease) {
+void DHCPServer::sendOffer(DHCPLease *lease, DHCPMessage *packet)
+{
     EV_INFO << "Offering " << *lease << endl;
 
     DHCPMessage *offer = new DHCPMessage("DHCPOFFER");
@@ -400,13 +413,36 @@ void DHCPServer::sendOffer(DHCPLease *lease) {
     // register the offering time // todo: ?
     lease->leaseTime = simTime();
 
-    sendToUDP(offer, serverPort,
-            lease->ip.makeBroadcastAddress(
-                    lease->subnetMask/*lease->ip.getNetworkMask()*/),
-            clientPort);
+    /* RFC 2131, 4.1
+     * If the 'giaddr' field in a DHCP message from a client is non-zero,
+     * the server sends any return messages to the 'DHCP server' port on the
+     * BOOTP relay agent whose address appears in 'giaddr'. If the 'giaddr'
+     * field is zero and the 'ciaddr' field is nonzero, then the server
+     * unicasts DHCPOFFER and DHCPACK messages to the address in 'ciaddr'.
+     * If 'giaddr' is zero and 'ciaddr' is zero, and the broadcast bit is
+     * set, then the server broadcasts DHCPOFFER and DHCPACK messages to
+     * 0xffffffff. If the broadcast bit is not set and 'giaddr' is zero and
+     * 'ciaddr' is zero, then the server unicasts DHCPOFFER and DHCPACK
+     * messages to the client's hardware address and 'yiaddr' address.
+     */
+    IPv4Address destAddr;
+    if (!packet->getGiaddr().isUnspecified())
+        destAddr = packet->getGiaddr();
+    else if (!packet->getCiaddr().isUnspecified())
+        destAddr = packet->getCiaddr();
+    else if (packet->getBroadcast())
+        destAddr = IPv4Address::ALLONES_ADDRESS;
+    else {
+        // TODO should send it to client's hardware address and yiaddr address, but the application can not set the destination MACAddress.
+        // destAddr = lease->ip;
+        destAddr = IPv4Address::ALLONES_ADDRESS;
+    }
+
+    sendToUDP(offer, serverPort, destAddr, clientPort);
 }
 
-DHCPLease *DHCPServer::getLeaseByMac(MACAddress mac) {
+DHCPLease *DHCPServer::getLeaseByMac(MACAddress mac)
+{
     for (auto & elem : leased) {
         // lease exist
         if (elem.second.mac == mac) {
@@ -420,14 +456,13 @@ DHCPLease *DHCPServer::getLeaseByMac(MACAddress mac) {
     return nullptr;
 }
 
-DHCPLease *DHCPServer::getAvailableLease(IPv4Address requestedAddress,
-        MACAddress& clientMAC) {
-    int beginAddr = ipAddressStart.getInt(); // the first address that we might use
+DHCPLease *DHCPServer::getAvailableLease(IPv4Address requestedAddress, MACAddress& clientMAC)
+{
+    int beginAddr = ipAddressStart.getInt();    // the first address that we might use
 
     // try to allocate the requested address if that address is valid and not already allocated
     if (!requestedAddress.isUnspecified()) {    // valid
-        if (leased.find(requestedAddress) != leased.end()
-                && !leased[requestedAddress].leased) // not already leased (allocated)
+        if (leased.find(requestedAddress) != leased.end() && !leased[requestedAddress].leased) // not already leased (allocated)
             return &leased[requestedAddress];
 
         // lease does not exist, create it
@@ -446,7 +481,8 @@ DHCPLease *DHCPServer::getAvailableLease(IPv4Address requestedAddress,
             // lease exists but not allocated (e.g. expired or released)
             if (!leased[ip].leased)
                 return &(leased[ip]);
-        } else {
+        }
+        else {
             // there is no expired lease so we create a new one
             leased[ip] = DHCPLease();
             leased[ip].ip = ip;
@@ -459,8 +495,8 @@ DHCPLease *DHCPServer::getAvailableLease(IPv4Address requestedAddress,
     return nullptr;
 }
 
-void DHCPServer::sendToUDP(cPacket *msg, int srcPort, const L3Address& destAddr,
-        int destPort) {
+void DHCPServer::sendToUDP(cPacket *msg, int srcPort, const L3Address& destAddr, int destPort)
+{
     EV_INFO << "Sending packet: " << msg << "." << endl;
     numSent++;
     UDPSocket::SendOptions options;
@@ -468,13 +504,31 @@ void DHCPServer::sendToUDP(cPacket *msg, int srcPort, const L3Address& destAddr,
     socket.sendTo(msg, destAddr, destPort, &options);
 }
 
-void DHCPServer::startApp() {
+void DHCPServer::startApp()
+{
+    maxNumOfClients = par("maxNumClients");
+    leaseTime = par("leaseTime");
+
     simtime_t start = std::max(startTime, simTime());
     ie = chooseInterface();
+    IPv4InterfaceData *ipv4data = ie->ipv4Data();
+    if (ipv4data == nullptr)
+        throw cRuntimeError("interface %s is not configured for IPv4", ie->getFullName());
+    const char *gatewayStr = par("gateway").stringValue();
+    gateway = *gatewayStr ? L3AddressResolver().resolve(gatewayStr, L3AddressResolver::ADDR_IPv4).toIPv4() : ipv4data->getIPAddress();
+    subnetMask = ipv4data->getNetmask();
+    long numReservedAddresses = par("numReservedAddresses").longValue();
+    uint32_t networkStartAddress = ipv4data->getIPAddress().getInt() & ipv4data->getNetmask().getInt();
+    ipAddressStart = IPv4Address(networkStartAddress + numReservedAddresses);
+    if (!IPv4Address::maskedAddrAreEqual(ipv4data->getIPAddress(), ipAddressStart, subnetMask))
+        throw cRuntimeError("The numReservedAddresses parameter larger than address range");
+    if (!IPv4Address::maskedAddrAreEqual(ipv4data->getIPAddress(), IPv4Address(ipAddressStart.getInt() + maxNumOfClients - 1), subnetMask))
+        throw cRuntimeError("Not enough IP addresses in subnet for %d clients", maxNumOfClients);
     scheduleAt(start, startTimer);
 }
 
-void DHCPServer::stopApp() {
+void DHCPServer::stopApp()
+{
     leased.clear();
     ie = nullptr;
     cancelEvent(startTimer);
@@ -486,8 +540,8 @@ void DHCPServer::stopApp() {
     }
 }
 
-bool DHCPServer::handleOperationStage(LifecycleOperation *operation, int stage,
-        IDoneCallback *doneCallback) {
+bool DHCPServer::handleOperationStage(LifecycleOperation *operation, int stage, IDoneCallback *doneCallback)
+{
     Enter_Method_Silent();
     if (dynamic_cast<NodeStartOperation *>(operation)) {
         if ((NodeStartOperation::Stage)stage == NodeStartOperation::STAGE_APPLICATION_LAYER) {
@@ -508,17 +562,13 @@ bool DHCPServer::handleOperationStage(LifecycleOperation *operation, int stage,
         }
     }
     else
-    throw cRuntimeError("Unsupported lifecycle operation '%s'", operation->getClassName());
+        throw cRuntimeError("Unsupported lifecycle operation '%s'", operation->getClassName());
     return true;
 }
 
 void DHCPServer::handleParameterChange(const char *parameterName) {
     if (opp_strlen(parameterName) > 0) {
-        if (opp_strcmp(parameterName, "subnetMask") == 0) {
-            subnetMask = IPv4Address(par("subnetMask").stringValue());
-        } else if (opp_strcmp(parameterName, "ipAddressStart") == 0) {
-            ipAddressStart = IPv4Address(par("ipAddressStart").stringValue());
-        } else if (opp_strcmp(parameterName, "gateway") == 0) {
+        if (opp_strcmp(parameterName, "gateway") == 0) {
             gateway = IPv4Address(par("gateway").stringValue());
         }
     }

@@ -49,6 +49,7 @@ protected:
             IDoneCallback *doneCallback) override;
     virtual void handleMessage(cMessage *msg) override;
     virtual void handleTimer(cMessage *msg) override;
+    virtual void rescheduleOrDeleteTimer(simtime_t d, short int msgKind) override;
     virtual void sendRequest() override;
     virtual void socketDataArrived(int connId, void *ptr, cPacket *msg,
             bool urgent) override;
@@ -60,6 +61,7 @@ private:
     void decreasePeersTtl();
     int removeZeroTtl();
     void setConnectAddressToGoIP();
+    IPv4Address getMyIp();
     void abort();
 };
 

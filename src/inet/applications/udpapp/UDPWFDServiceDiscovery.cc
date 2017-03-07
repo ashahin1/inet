@@ -654,9 +654,9 @@ void UDPWFDServiceDiscovery::setDhcpServerParams() {
     if (dhcpServer != nullptr) {
         string ipGateway = "10." + myInfo.proposedSubnet + ".1";
         string ipStr = "10." + myInfo.proposedSubnet + ".2";
-        dhcpServer->par("ipAddressStart").setStringValue(ipStr.c_str());
-        dhcpServer->par("subnetMask").setStringValue("255.255.255.0");
-        dhcpServer->par("gateway").setStringValue(ipGateway.c_str());
+        //dhcpServer->par("ipAddressStart").setStringValue(ipStr.c_str());
+        //dhcpServer->par("subnetMask").setStringValue("255.255.255.0");
+        //dhcpServer->par("gateway").setStringValue(ipGateway.c_str());
     }
 }
 

@@ -93,7 +93,9 @@ bool TCPMgmtClientApp::handleOperationStage(LifecycleOperation *operation,
             cancelEvent(timeoutMsg);
             if (socket.getState() == TCPSocket::CONNECTED || socket.getState() == TCPSocket::CONNECTING || socket.getState() == TCPSocket::PEER_CLOSED) {
                 //close();
-                abort();
+                if(!getMyIp().isUnspecified()) {
+                    abort();
+                }
                 if(ttlMsg != nullptr) {
                     /*if(ttlMsg->isScheduled()) {
                      cancelAndDelete(ttlMsg);
@@ -127,12 +129,16 @@ void TCPMgmtClientApp::handleMessage(cMessage* msg) {
     } else {
         //Let's try to limit the sending of messages to only when the node is operational
         //I hope that this fixes the various unexpected socket errors.
-        if (isNodeUp()) {
-            TCPAppBase::handleMessage(msg);
-        } else {
-            delete msg;
-        }
+        //if (isNodeUp()) {
+        TCPAppBase::handleMessage(msg);
+        //} else {
+        //    delete msg;
+        //}
     }
+}
+
+void TCPMgmtClientApp::rescheduleOrDeleteTimer(simtime_t d, short int msgKind) {
+    TCPBasicClientApp::rescheduleOrDeleteTimer(d, msgKind);
 }
 
 void TCPMgmtClientApp::abort() {
@@ -182,13 +188,23 @@ void TCPMgmtClientApp::handleTimer(cMessage* msg) {
 
         TCPBasicClientApp::handleTimer(msg);
     } else if (msg->getKind() == MSGKIND_SEND) {
-        if (socket.getState() != socket.LOCALLY_CLOSED) {
-            sendRequest();
-            numRequestsToSend--;
-        }
+        //We have to make sure that we are still associated with AP (beacon not lost)
+        //Thus, we need to check if our ip adress is still valid
+        if (!getMyIp().isUnspecified()) {
+            if (socket.getState() != socket.LOCALLY_CLOSED) {
+                sendRequest();
+                numRequestsToSend--;
+            }
 
-        simtime_t d = simTime() + (simtime_t) par("thinkTime");
-        rescheduleOrDeleteTimer(d, MSGKIND_SEND);
+            simtime_t d = simTime() + (simtime_t) par("thinkTime");
+            rescheduleOrDeleteTimer(d, MSGKIND_SEND);
+        } else {
+            //abort();
+            EV_DETAIL
+                             << "\nSend timer fired when we are not connected. The beacon may be lost!!!";
+            //delete msg;
+            //timeoutMsg = nullptr;
+        }
 
     } else {
         TCPBasicClientApp::handleTimer(msg);
@@ -273,6 +289,17 @@ void TCPMgmtClientApp::socketDataArrived(int connId, void* ptr, cPacket* msg,
     TCPAppBase::socketDataArrived(connId, ptr, msg, urgent);
 }
 
+IPv4Address TCPMgmtClientApp::getMyIp() {
+    IPv4Address myIP;
+    if (ift != nullptr) {
+        const InterfaceEntry* ie =
+                const_cast<const InterfaceEntry*>(ift->getInterfaceByName(
+                        par("ipInterface")));
+        myIP = ie->ipv4Data()->getIPAddress();
+    }
+    return myIP;
+}
+
 void TCPMgmtClientApp::initMyHeartBeatRecord() {
     if (device != nullptr) {
         int devID = device->getId();
@@ -286,6 +313,8 @@ void TCPMgmtClientApp::initMyHeartBeatRecord() {
         IPv4Address myIP = ie->ipv4Data()->getIPAddress();
         if (!myIP.isUnspecified()) {
             myHeartBeatRecord.ipAddress = myIP.str();
+        } else {
+            myHeartBeatRecord.ipAddress = "";
         }
         myHeartBeatRecord.macAddress = ie->getMacAddress().str();
     }

@@ -37,7 +37,7 @@ DHCPClient::~DHCPClient()
     cancelAndDelete(startTimer);
     delete lease;
 }
-
+int myId;
 void DHCPClient::initialize(int stage)
 {
     if (stage == INITSTAGE_LOCAL) {
@@ -67,7 +67,7 @@ void DHCPClient::initialize(int stage)
         serverPort = 67;    // server
 
         // get the hostname
-        host = getContainingNode(this);
+        host = getContainingNode(this);myId = host->getId();
 
         // for a wireless interface subscribe the association event to start the DHCP protocol
         host->subscribe(NF_L2_ASSOCIATED, this);

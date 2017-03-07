@@ -224,6 +224,12 @@ void ARP::sendARPRequest(const InterfaceEntry *ie, IPv4Address ipAddress)
     ASSERT(!myMACAddress.isUnspecified());
     ASSERT(!myIPAddress.isUnspecified());
 
+    //Due to Losing the beacon in wireless scenarios, devices would diassociate from the AccessPoint
+    //They would have and unspecified ip address in there interface entry
+    //Lets avoid this case
+    if (myIPAddress.isUnspecified())
+        return;
+
     // fill out everything in ARP Request packet except dest MAC address
     ARPPacket *arp = new ARPPacket("arpREQ");
     arp->setByteLength(ARP_HEADER_BYTES);

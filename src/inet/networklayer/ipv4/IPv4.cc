@@ -762,8 +762,8 @@ IPv4Datagram *IPv4::encapsulate(cPacket *transportPacket, IPv4ControlInfo *contr
             //a hack to get rid of an error that happens when a frame has came for the tcp layer with an ip that is not ours
             //the tcp layer in such case sends the frame back, and here the destination interface is not known because it is based on a wrong
             //destination Ip address.
-            delete datagram;
-            return nullptr;
+            //delete datagram;
+            //return nullptr;
             throw cRuntimeError("Wrong source address %s in (%s)%s: no interface with such address",
                     src.str().c_str(), transportPacket->getClassName(), transportPacket->getFullName());
         }
