@@ -154,19 +154,19 @@ public:
     int getConflictCount() const;
     int getOrphCount() const;
     long getTotalRcvdRequests() const;
-    void setTotalRcvdRequests(long totalRcvdRequests = 0);
+    void addTotalRcvdRequests(long totalRcvdRequests = 1);
     long getTotalRcvdResponces() const;
-    void setTotalRcvdResponces(long totalRcvdResponces = 0);
+    void addTotalRcvdResponces(long totalRcvdResponces = 1);
     long getTotalSentRequests() const;
-    void setTotalSentRequests(long totalSentRequests = 0);
+    void addTotalSentRequests(long totalSentRequests = 1);
     long getTotalSentResponces() const;
-    void setTotalSentResponces(long totalSentResponces = 0);
+    void addTotalSentResponces(long totalSentResponces = 1);
     long getTotalResolsedIpConflicts() const;
-    void setTotalResolsedIpConflicts(long totalResolsedIpConflicts = 0);
+    void addTotalResolsedIpConflicts(long totalResolsedIpConflicts = 1);
     long getTotalUdpPacketsRcvd() const;
-    void setTotalUdpPacketsRcvd(long totalPacketsRcvd = 0);
+    void addTotalUdpPacketsRcvd(long totalPacketsRcvd = 1);
     long getTotalUdpPacketsSent() const;
-    void setTotalUdpPacketsSent(long totalPacketsSent = 0);
+    void addTotalUdpPacketsSent(long totalPacketsSent = 1);
 
 protected:
     virtual void initialize(int stage) override;

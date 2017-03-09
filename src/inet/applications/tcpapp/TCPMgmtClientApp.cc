@@ -64,20 +64,20 @@ void TCPMgmtClientApp::initialize(int stage) {
 
         WATCH(myHeartBeatRecord.ipAddress);
 
-        getSimulation()->getSystemModule()->subscribe(TCPAppBase::sentPkSignal,
-                this);
-        getSimulation()->getSystemModule()->subscribe(TCPAppBase::rcvdPkSignal,
-                this);
+        subscribe(sentPkSignal, this);
+        subscribe(rcvdPkSignal, this);
 
     }
 }
 
 void TCPMgmtClientApp::receiveSignal(cComponent* source, simsignal_t signalID,
         cObject* obj, cObject* details) {
-    if (signalID == TCPAppBase::sentPkSignal) {
-        emit(sentMCPkSignal, obj);
-    } else if (signalID == TCPAppBase::rcvdPkSignal) {
-        emit(rcvdMCPkSignal, obj);
+    if (dynamic_cast<TCPMgmtClientApp*>(source)) {
+        if (signalID == sentPkSignal) {
+            emit(sentMCPkSignal, obj);
+        } else if (signalID == rcvdPkSignal) {
+            emit(rcvdMCPkSignal, obj);
+        }
     }
 }
 

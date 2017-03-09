@@ -68,19 +68,19 @@ void TCPMgmtSrvApp::initialize(int stage) {
         ttlMsg = new cMessage("ttlMsg");
         ttlMsg->setKind(TTL_MSG);
 
-        getSimulation()->getSystemModule()->subscribe(TCPGenericSrvApp::sentPkSignal,
-                this);
-        getSimulation()->getSystemModule()->subscribe(TCPGenericSrvApp::rcvdPkSignal,
-                this);
+        subscribe(sentPkSignal, this);
+        subscribe(rcvdPkSignal, this);
     }
 }
 
 void TCPMgmtSrvApp::receiveSignal(cComponent* source, simsignal_t signalID,
         cObject* obj, cObject* details) {
-    if (signalID == TCPGenericSrvApp::sentPkSignal) {
-        emit(sentMSPkSignal, obj);
-    } else if (signalID == TCPGenericSrvApp::rcvdPkSignal) {
-        emit(rcvdMSPkSignal, obj);
+    if (dynamic_cast<TCPMgmtSrvApp*>(source)) {
+        if (signalID == sentPkSignal) {
+            emit(sentMSPkSignal, obj);
+        } else if (signalID == rcvdPkSignal) {
+            emit(rcvdMSPkSignal, obj);
+        }
     }
 }
 
@@ -140,7 +140,6 @@ void TCPMgmtSrvApp::handleMessage(cMessage* msg) {
         }
     }
 }
-
 
 void TCPMgmtSrvApp::closeSocket() {
     if (socketListening) {

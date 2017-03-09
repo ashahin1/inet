@@ -393,7 +393,7 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
         payload->setOrgSendTime(simTime());
         numRequestSent++;
         if (groupStatistics) {
-            groupStatistics->setTotalSentRequests(numRequestSent);
+            groupStatistics->addTotalSentRequests();
         }
     } else {
         if (isDeviceInfo) {
@@ -408,7 +408,7 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
         }
         numResponseSent++;
         if (groupStatistics) {
-            groupStatistics->setTotalSentResponces(numResponseSent);
+            groupStatistics->addTotalSentResponces();
         }
     }
 
@@ -426,7 +426,7 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
     socket.sendTo(payload, destAddr, destPort, sndOpt);
     numSent++;
     if (groupStatistics) {
-        groupStatistics->setTotalUdpPacketsSent(numSent);
+        groupStatistics->addTotalUdpPacketsSent();
     }
 }
 
@@ -514,7 +514,7 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
         }
         numRequestRcvd++;
         if (groupStatistics) {
-            groupStatistics->setTotalRcvdRequests(numRequestRcvd);
+            groupStatistics->addTotalRcvdRequests();
         }
     } else {
         simtime_t eed = 0;
@@ -536,14 +536,14 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
             emit(reqToRespDelaySignal, eed);
             numResponseRcvd++;
             if (groupStatistics) {
-                groupStatistics->setTotalRcvdResponces(numResponseRcvd);
+                groupStatistics->addTotalRcvdResponces();
             }
         }
     }
     delete pk;
     numReceived++;
     if (groupStatistics) {
-        groupStatistics->setTotalUdpPacketsRcvd(numReceived);
+        groupStatistics->addTotalUdpPacketsRcvd();
     }
 }
 
@@ -900,8 +900,8 @@ string UDPWFDServiceDiscovery::getConflictFreeSubnet() {
         myInfo.proposedSubnet = proSubnet;
         numResolvedIpConflicts++;
         if (groupStatistics) {
-            groupStatistics->setTotalResolsedIpConflicts(
-                    numResolvedIpConflicts);
+            groupStatistics->addTotalResolsedIpConflicts(
+                    );
         }
     }
     return proSubnet;

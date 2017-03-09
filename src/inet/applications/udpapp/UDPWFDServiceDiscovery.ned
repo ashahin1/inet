@@ -55,7 +55,7 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
         destAddresses = default("255.255.255.255");
         @class(UDPWFDServiceDiscovery);
         @signal[membersChanged];
-        @signal[endToEndDelay];
+        @signal[reqToRespDelay];
         @statistic[numOfAssociatedMembers](title="Associated members count"; source=membersChanged; record=vector,last,stats);
-        @statistic[endToEndDelay](title="Request to response delay"; source=endToEndDelay; record=vector?,stats);
+        @statistic[reqToRespDelay](title="Request to response delay"; source=reqToRespDelay; record=vector?,stats);
 }

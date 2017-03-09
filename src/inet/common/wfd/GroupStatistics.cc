@@ -385,11 +385,14 @@ void GroupStatistics::handleMessage(cMessage* msg) {
 
 void GroupStatistics::receiveSignal(cComponent* source, simsignal_t signalID,
         double d, cObject* details) {
-    if (signalID == IEpEnergyConsumer::powerConsumptionChangedSignal) {
-        emit(totalAllConsumedPowerSignal, d);
-    } else if (signalID
-            == IEpEnergyStorage::residualEnergyCapacityChangedSignal) {
-        emit(totalResidualEnergySignal, d);
+    Enter_Method("receiveSignal");
+    if(dynamic_cast<EpEnergySourceBase*>(source)) {
+        if (signalID == IEpEnergyConsumer::powerConsumptionChangedSignal) {
+            emit(totalAllConsumedPowerSignal, d);
+        } else if (signalID
+        == IEpEnergyStorage::residualEnergyCapacityChangedSignal) {
+            emit(totalResidualEnergySignal, d);
+        }
     }
 }
 
@@ -397,37 +400,48 @@ void GroupStatistics::receiveSignal(cComponent* source, simsignal_t signalID,
         const SimTime& t, cObject* details) {
 
     Enter_Method("receiveSignal");
-    if (signalID == UDPWFDServiceDiscovery::reqToRespDelaySignal) {
-        emit(totalReqToRespDelaySignal, t);
+    if(dynamic_cast<UDPWFDServiceDiscovery *> (source)) {
+        if (signalID == UDPWFDServiceDiscovery::reqToRespDelaySignal) {
+            emit(totalReqToRespDelaySignal, t);
+        }
     }
 }
 
 void GroupStatistics::receiveSignal(cComponent* source, simsignal_t signalID,
         long l, cObject* details) {
+    Enter_Method("receiveSignal");
 }
 
 void GroupStatistics::receiveSignal(cComponent* source, simsignal_t signalID,
         cObject* obj, cObject* details) {
-    if (signalID == UDPBasicApp::sentPkSignal) {
-        emit(totalUdpSentPkSignal, obj);
-    } else if (signalID == UDPBasicApp::rcvdPkSignal) {
-        emit(totalUdpRcvdPkSignal, obj);
-    } else if (signalID == TCPMgmtSrvApp::rcvdMSPkSignal) {
-        emit(totalTcpRcvdPkSignal, obj);
-    } else if (signalID == TCPMgmtSrvApp::sentMSPkSignal) {
-        emit(totalTcpSentPkSignal, obj);
-    } else if (signalID == TCPMgmtClientApp::rcvdMCPkSignal) {
-        emit(totalTcpRcvdPkSignal, obj);
-    } else if (signalID == TCPMgmtClientApp::sentMCPkSignal) {
-        emit(totalTcpSentPkSignal, obj);
+    Enter_Method("receiveSignal");
+    if(dynamic_cast<UDPWFDServiceDiscovery *> (source)) {
+        if (signalID == UDPBasicApp::sentPkSignal) {
+            emit(totalUdpSentPkSignal, obj);
+        } else if (signalID == UDPBasicApp::rcvdPkSignal) {
+            emit(totalUdpRcvdPkSignal, obj);
+        }
+    } else if(dynamic_cast<TCPMgmtSrvApp *> (source)) {
+        if (signalID == TCPMgmtSrvApp::rcvdMSPkSignal) {
+            emit(totalTcpRcvdPkSignal, obj);
+        } else if (signalID == TCPMgmtSrvApp::sentMSPkSignal) {
+            emit(totalTcpSentPkSignal, obj);
+        }
+    } else if(dynamic_cast<TCPMgmtClientApp *> (source)) {
+        if (signalID == TCPMgmtClientApp::rcvdMCPkSignal) {
+            emit(totalTcpRcvdPkSignal, obj);
+        } else if (signalID == TCPMgmtClientApp::sentMCPkSignal) {
+            emit(totalTcpSentPkSignal, obj);
+        }
     }
+
 }
 
 long GroupStatistics::getTotalRcvdRequests() const {
     return totalRcvdRequests;
 }
 
-void GroupStatistics::setTotalRcvdRequests(long totalRcvdRequests) {
+void GroupStatistics::addTotalRcvdRequests(long totalRcvdRequests) {
     this->totalRcvdRequests += totalRcvdRequests;
 }
 
@@ -435,7 +449,7 @@ long GroupStatistics::getTotalRcvdResponces() const {
     return totalRcvdResponces;
 }
 
-void GroupStatistics::setTotalRcvdResponces(long totalRcvdResponces) {
+void GroupStatistics::addTotalRcvdResponces(long totalRcvdResponces) {
     this->totalRcvdResponces += totalRcvdResponces;
 }
 
@@ -443,7 +457,7 @@ long GroupStatistics::getTotalSentRequests() const {
     return totalSentRequests;
 }
 
-void GroupStatistics::setTotalSentRequests(long totalSentRequests) {
+void GroupStatistics::addTotalSentRequests(long totalSentRequests) {
     this->totalSentRequests += totalSentRequests;
 }
 
@@ -451,7 +465,7 @@ long GroupStatistics::getTotalSentResponces() const {
     return totalSentResponces;
 }
 
-void GroupStatistics::setTotalSentResponces(long totalSentResponces) {
+void GroupStatistics::addTotalSentResponces(long totalSentResponces) {
     this->totalSentResponces += totalSentResponces;
 }
 
@@ -459,7 +473,7 @@ long GroupStatistics::getTotalUdpPacketsRcvd() const {
     return totalUdpPacketsRcvd;
 }
 
-void GroupStatistics::setTotalUdpPacketsRcvd(long totalPacketsRcvd) {
+void GroupStatistics::addTotalUdpPacketsRcvd(long totalPacketsRcvd) {
     this->totalUdpPacketsRcvd += totalPacketsRcvd;
 }
 
@@ -467,14 +481,14 @@ long GroupStatistics::getTotalUdpPacketsSent() const {
     return totalUdpPacketsSent;
 }
 
-void GroupStatistics::setTotalUdpPacketsSent(long totalPacketsSent) {
+void GroupStatistics::addTotalUdpPacketsSent(long totalPacketsSent) {
     this->totalUdpPacketsSent += totalPacketsSent;
 }
 long GroupStatistics::getTotalResolsedIpConflicts() const {
     return totalResolsedIpConflicts;
 }
 
-void GroupStatistics::setTotalResolsedIpConflicts(
+void GroupStatistics::addTotalResolsedIpConflicts(
         long totalResolsedIpConflicts) {
     this->totalResolsedIpConflicts += totalResolsedIpConflicts;
 }
