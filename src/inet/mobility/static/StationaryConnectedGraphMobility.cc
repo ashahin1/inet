@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Isabel Dietrich <isabel.dietrich@informatik.uni-erlangen.de>
+ * Copyright (C) 2017 Ahmed Shahin <ashahin1@umbc.edu, ahmed3012005@gmail.com>
  * Copyright (C) 2013 OpenSim Ltd
  *
  * This program is free software; you can redistribute it and/or modify
@@ -23,19 +23,37 @@ namespace inet {
 
 Define_Module(StationaryConnectedGraphMobility);
 
+double StationaryConnectedGraphMobility::previousNodeX = -1;
+double StationaryConnectedGraphMobility::previousNodeY = -1;
+double StationaryConnectedGraphMobility::previousNodeZ = -1;
+
 void StationaryConnectedGraphMobility::setInitialPosition() {
     double txPowerRange = par("txPowerRange");
 
     Coord pos = getRandomPosition();
+    double dist = 0.0f;
+
+    if (previousNodeX == -1 || previousNodeY == -1 || previousNodeZ == -1) {
+        //This is the first node, so no need to do a check for range
+        EV_DETAIL << "\nFirst Node";
+    } else {
+        //We need to check for range
+        while ((dist = sqrt(
+                pow(pos.x - previousNodeX, 2) + pow(pos.y - previousNodeY, 2)))
+                >= txPowerRange) {
+            pos = getRandomPosition();
+        }
+    }
+    //Save the previous values to compare it with new nodes
+    previousNodeX = pos.x;
+    previousNodeY = pos.y;
+    previousNodeZ = 0;
 
     lastPosition.x = pos.x;
     lastPosition.y = pos.y;
     lastPosition.z = 0;
 
-    //previousNodeX = lastPosition.x;
-    //previousNodeY = lastPosition.y;
-    //previousNodeZ = lastPosition.z;
-
+    EV_DETAIL << "\nx=" << pos.x << "   ,y=" << pos.y;
 
     recordScalar("x", lastPosition.x);
     recordScalar("y", lastPosition.y);

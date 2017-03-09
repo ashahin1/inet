@@ -48,7 +48,7 @@ simple GroupStatistics
         
         @signal[totalAllConsumedPower];
         @statistic[totalAllConsumedPower](title="Total power consumption along all nodes"; source=totalAllConsumedPower; record=sum);
-        @statistic[totalAvgConsumedPower](title="total Avg power consumption along all nodes"; source="totalAllConsumedPower/(max(GoCount)+max(GmCount)+max(OrphCount))"; record=last);
+        @statistic[totalAvgConsumedPower](title="total Avg power consumption along all nodes"; source="sum(totalAllConsumedPower)/(max(GoCount)+max(GmCount)+max(OrphCount))"; record=last);
 
         @signal[totalResidualEnergy];
         @statistic[totalResidualEnergy](title="Total residual Energy along all nodes"; source=totalResidualEnergy; record=histogram);

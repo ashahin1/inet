@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2006 Isabel Dietrich <isabel.dietrich@informatik.uni-erlangen.de>
+ * Copyright (C) 2017 Ahmed Shahin <ashahin1@umbc.edu, ahmed3012005@gmail.com>
+ * Copyright (C) 2013 OpenSim Ltd.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,11 +27,14 @@
 namespace inet {
 
 /**
- * @brief Mobility model which places all hosts at constant distances
- *  within the simulation area (resulting in a regular grid).
+ * @brief Mobility model which places all hosts at random making sure
+ * that every node has at least one reachable neighbor. The minimum distance
+ * between any two nodes is controlled by the txPowerRange parameter. This parameter
+ * should be adjusted according to the transmitting range of the radio. The
+ * resulting graph should be connected.
  *
  * @ingroup mobility
- * @author Isabel Dietrich
+ * @author Ahmed Shahin
  */
 class INET_API StationaryConnectedGraphMobility : public StationaryMobility
 {
