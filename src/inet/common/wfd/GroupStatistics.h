@@ -53,7 +53,7 @@ bool operator==(const Compare& c, const std::pair<string, int>&p) {
 }
 #endif
 
-class GroupStatistics: public omnetpp::cSimpleModule {
+class GroupStatistics: public omnetpp::cSimpleModule, public cListener {
 public:
     /**
      * The signal that is used to collect the number of GOs during each protocol run.
@@ -79,6 +79,15 @@ public:
      * The signal that is used to collect the number of subnet conflicts (after settling) during each protocol run.
      */
     static simsignal_t conflictCountSignal;
+
+    static simsignal_t totalReqToRespDelaySignal;
+    static simsignal_t totalAllConsumedPowerSignal;
+    static simsignal_t totalResidualEnergySignal;
+    static simsignal_t totalUdpSentPkSignal;
+    static simsignal_t totalUdpRcvdPkSignal;
+    static simsignal_t totalTcpSentPkSignal;
+    static simsignal_t totalTcpRcvdPkSignal;
+
 protected:
     int goCount;
     int gmCount;
@@ -115,6 +124,14 @@ protected:
     map<string, int> assignedSubnetCount;
     int conflictCount;
 
+    long totalSentRequests = 0;
+    long totalRcvdRequests = 0;
+    long totalSentResponces = 0;
+    long totalRcvdResponces = 0;
+    long totalUdpPacketsSent = 0;
+    long totalUdpPacketsRcvd = 0;
+    long totalResolsedIpConflicts = 0;
+
 public:
     GroupStatistics();
     virtual ~GroupStatistics();
@@ -136,12 +153,34 @@ public:
     void calcGraphConnectivity();
     int getConflictCount() const;
     int getOrphCount() const;
+    long getTotalRcvdRequests() const;
+    void setTotalRcvdRequests(long totalRcvdRequests = 0);
+    long getTotalRcvdResponces() const;
+    void setTotalRcvdResponces(long totalRcvdResponces = 0);
+    long getTotalSentRequests() const;
+    void setTotalSentRequests(long totalSentRequests = 0);
+    long getTotalSentResponces() const;
+    void setTotalSentResponces(long totalSentResponces = 0);
+    long getTotalResolsedIpConflicts() const;
+    void setTotalResolsedIpConflicts(long totalResolsedIpConflicts = 0);
+    long getTotalUdpPacketsRcvd() const;
+    void setTotalUdpPacketsRcvd(long totalPacketsRcvd = 0);
+    long getTotalUdpPacketsSent() const;
+    void setTotalUdpPacketsSent(long totalPacketsSent = 0);
 
 protected:
     virtual void initialize(int stage) override;
     virtual void refreshDisplay() const override;
     virtual void handleMessage(cMessage *msg) override;
     virtual void finish() override;
+    virtual void receiveSignal(cComponent *source, simsignal_t signalID,
+            double d, cObject *details) override;
+    virtual void receiveSignal(cComponent *source, simsignal_t signalID,
+            const SimTime& t, cObject *details) override;
+    virtual void receiveSignal(cComponent *source, simsignal_t signalID, long l,
+            cObject *details) override;
+    virtual void receiveSignal(cComponent *source, simsignal_t signalID,
+            cObject *obj, cObject *details) override;
 };
 
 } /* namespace inet */

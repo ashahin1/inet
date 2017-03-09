@@ -15,6 +15,9 @@
 
 #include "inet/common/wfd/GroupStatistics.h"
 #include "/home/ahmed/or-tools/include/graph/connectivity.h"
+#include "inet/applications/udpapp/UDPWFDServiceDiscovery.h"
+#include "inet/applications/tcpapp/TCPMgmtClientApp.h"
+#include "inet/applications/tcpapp/TCPMgmtSrvApp.h"
 
 #include <algorithm>
 
@@ -37,6 +40,21 @@ simsignal_t GroupStatistics::connectedComponectCountSignal =
 simsignal_t GroupStatistics::conflictCountSignal = cComponent::registerSignal(
         "ConflictCount");
 
+simsignal_t GroupStatistics::totalReqToRespDelaySignal =
+        cComponent::registerSignal("totalReqToRespDelay");
+simsignal_t GroupStatistics::totalAllConsumedPowerSignal =
+        cComponent::registerSignal("totalAllConsumedPower");
+simsignal_t GroupStatistics::totalResidualEnergySignal =
+        cComponent::registerSignal("totalResidualEnergy");
+simsignal_t GroupStatistics::totalUdpSentPkSignal = cComponent::registerSignal(
+        "totalUdpSentPk");
+simsignal_t GroupStatistics::totalUdpRcvdPkSignal = cComponent::registerSignal(
+        "totalUdpRcvdPk");
+simsignal_t GroupStatistics::totalTcpSentPkSignal = cComponent::registerSignal(
+        "totalTcpSentPk");
+simsignal_t GroupStatistics::totalTcpRcvdPkSignal = cComponent::registerSignal(
+        "totalTcpRcvdPk");
+
 GroupStatistics::GroupStatistics() {
     // TODO Auto-generated constructor stub
     clearAll();
@@ -53,6 +71,14 @@ void GroupStatistics::finish() {
     //This way we will get it as soon as we finish the simulation.
     //Thus we don't have to wait for the validDataMsg, and can finish early.
     recordScalar("Conflict_Count", conflictCount);
+
+    recordScalar("totalSentRequests", totalSentRequests);
+    recordScalar("totalRcvdRequests", totalRcvdRequests);
+    recordScalar("totalSentResponces", totalSentResponces);
+    recordScalar("totalRcvdResponces", totalRcvdResponces);
+    recordScalar("totalUdpPacketsSent", totalUdpPacketsSent);
+    recordScalar("totalUdpPacketsRcvd", totalUdpPacketsRcvd);
+    recordScalar("totalResolsedIpConflicts", totalResolsedIpConflicts);
 }
 
 void GroupStatistics::initialize(int stage) {
@@ -71,6 +97,8 @@ void GroupStatistics::initialize(int stage) {
     WATCH(curIndex);
     WATCH(connectedComponentCount);
     WATCH(conflictCount);
+    WATCH(totalUdpPacketsSent);
+    WATCH(totalUdpPacketsRcvd);
 
     validDataMsg = new cMessage("validDataMsg");
     scheduleAt(
@@ -79,6 +107,24 @@ void GroupStatistics::initialize(int stage) {
 
     resetMsg = new cMessage("restMsg");
 
+    getSimulation()->getSystemModule()->subscribe(
+            UDPWFDServiceDiscovery::reqToRespDelaySignal, this);
+    getSimulation()->getSystemModule()->subscribe(
+            IEpEnergyConsumer::powerConsumptionChangedSignal, this);
+    getSimulation()->getSystemModule()->subscribe(
+            IEpEnergyStorage::residualEnergyCapacityChangedSignal, this);
+    getSimulation()->getSystemModule()->subscribe(UDPBasicApp::sentPkSignal,
+            this);
+    getSimulation()->getSystemModule()->subscribe(UDPBasicApp::rcvdPkSignal,
+            this);
+    getSimulation()->getSystemModule()->subscribe(TCPMgmtSrvApp::sentMSPkSignal,
+            this);
+    getSimulation()->getSystemModule()->subscribe(TCPMgmtSrvApp::rcvdMSPkSignal,
+            this);
+    getSimulation()->getSystemModule()->subscribe(
+            TCPMgmtClientApp::sentMCPkSignal, this);
+    getSimulation()->getSystemModule()->subscribe(
+            TCPMgmtClientApp::rcvdMCPkSignal, this);
 }
 
 void GroupStatistics::refreshDisplay() const {
@@ -186,6 +232,14 @@ void GroupStatistics::clearAll() {
     connectedComponentCount = 0;
     curIndex = 0;
     conflictCount = 0;
+
+    totalSentRequests = 0;
+    totalRcvdRequests = 0;
+    totalSentResponces = 0;
+    totalRcvdResponces = 0;
+    totalUdpPacketsSent = 0;
+    totalUdpPacketsRcvd = 0;
+    totalResolsedIpConflicts = 0;
 
     goInfoMap.clear();
     ssidToDevIdMap.clear();
@@ -329,5 +383,102 @@ void GroupStatistics::handleMessage(cMessage* msg) {
     }
 }
 
-} /* namespace inet */
+void GroupStatistics::receiveSignal(cComponent* source, simsignal_t signalID,
+        double d, cObject* details) {
+    if (signalID == IEpEnergyConsumer::powerConsumptionChangedSignal) {
+        emit(totalAllConsumedPowerSignal, d);
+    } else if (signalID
+            == IEpEnergyStorage::residualEnergyCapacityChangedSignal) {
+        emit(totalResidualEnergySignal, d);
+    }
+}
+
+void GroupStatistics::receiveSignal(cComponent* source, simsignal_t signalID,
+        const SimTime& t, cObject* details) {
+
+    Enter_Method("receiveSignal");
+    if (signalID == UDPWFDServiceDiscovery::reqToRespDelaySignal) {
+        emit(totalReqToRespDelaySignal, t);
+    }
+}
+
+void GroupStatistics::receiveSignal(cComponent* source, simsignal_t signalID,
+        long l, cObject* details) {
+}
+
+void GroupStatistics::receiveSignal(cComponent* source, simsignal_t signalID,
+        cObject* obj, cObject* details) {
+    if (signalID == UDPBasicApp::sentPkSignal) {
+        emit(totalUdpSentPkSignal, obj);
+    } else if (signalID == UDPBasicApp::rcvdPkSignal) {
+        emit(totalUdpRcvdPkSignal, obj);
+    } else if (signalID == TCPMgmtSrvApp::rcvdMSPkSignal) {
+        emit(totalTcpRcvdPkSignal, obj);
+    } else if (signalID == TCPMgmtSrvApp::sentMSPkSignal) {
+        emit(totalTcpSentPkSignal, obj);
+    } else if (signalID == TCPMgmtClientApp::rcvdMCPkSignal) {
+        emit(totalTcpRcvdPkSignal, obj);
+    } else if (signalID == TCPMgmtClientApp::sentMCPkSignal) {
+        emit(totalTcpSentPkSignal, obj);
+    }
+}
+
+long GroupStatistics::getTotalRcvdRequests() const {
+    return totalRcvdRequests;
+}
+
+void GroupStatistics::setTotalRcvdRequests(long totalRcvdRequests) {
+    this->totalRcvdRequests += totalRcvdRequests;
+}
+
+long GroupStatistics::getTotalRcvdResponces() const {
+    return totalRcvdResponces;
+}
+
+void GroupStatistics::setTotalRcvdResponces(long totalRcvdResponces) {
+    this->totalRcvdResponces += totalRcvdResponces;
+}
+
+long GroupStatistics::getTotalSentRequests() const {
+    return totalSentRequests;
+}
+
+void GroupStatistics::setTotalSentRequests(long totalSentRequests) {
+    this->totalSentRequests += totalSentRequests;
+}
+
+long GroupStatistics::getTotalSentResponces() const {
+    return totalSentResponces;
+}
+
+void GroupStatistics::setTotalSentResponces(long totalSentResponces) {
+    this->totalSentResponces += totalSentResponces;
+}
+
+long GroupStatistics::getTotalUdpPacketsRcvd() const {
+    return totalUdpPacketsRcvd;
+}
+
+void GroupStatistics::setTotalUdpPacketsRcvd(long totalPacketsRcvd) {
+    this->totalUdpPacketsRcvd += totalPacketsRcvd;
+}
+
+long GroupStatistics::getTotalUdpPacketsSent() const {
+    return totalUdpPacketsSent;
+}
+
+void GroupStatistics::setTotalUdpPacketsSent(long totalPacketsSent) {
+    this->totalUdpPacketsSent += totalPacketsSent;
+}
+long GroupStatistics::getTotalResolsedIpConflicts() const {
+    return totalResolsedIpConflicts;
+}
+
+void GroupStatistics::setTotalResolsedIpConflicts(
+        long totalResolsedIpConflicts) {
+    this->totalResolsedIpConflicts += totalResolsedIpConflicts;
+}
+
+}
+/* namespace inet */
 

@@ -51,6 +51,7 @@ class INET_API UDPBasicApp : public ApplicationBase
     int numSent = 0;
     int numReceived = 0;
 
+  public:
     static simsignal_t sentPkSignal;
     static simsignal_t rcvdPkSignal;
 

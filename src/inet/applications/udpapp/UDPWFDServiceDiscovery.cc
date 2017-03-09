@@ -33,8 +33,8 @@ Define_Module(UDPWFDServiceDiscovery);
 simsignal_t UDPWFDServiceDiscovery::membersChangedSignal =
         cComponent::registerSignal("membersChanged");
 
-simsignal_t UDPWFDServiceDiscovery::endToEndDelaySignal =
-        cComponent::registerSignal("endToEndDelay");
+simsignal_t UDPWFDServiceDiscovery::reqToRespDelaySignal =
+        cComponent::registerSignal("reqToRespDelay");
 
 UDPWFDServiceDiscovery::UDPWFDServiceDiscovery() {
     // TODO Auto-generated constructor stub
@@ -392,6 +392,9 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
         payload = new ServiceDiscoveryRequest(str.str().c_str());
         payload->setOrgSendTime(simTime());
         numRequestSent++;
+        if (groupStatistics) {
+            groupStatistics->setTotalSentRequests(numRequestSent);
+        }
     } else {
         if (isDeviceInfo) {
             payload = new ServiceDiscoveryResponseDeviceInfo(str.str().c_str());
@@ -404,6 +407,9 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
                     orgSendTime);
         }
         numResponseSent++;
+        if (groupStatistics) {
+            groupStatistics->setTotalSentResponces(numResponseSent);
+        }
     }
 
     //Declare that the sender is this device
@@ -419,6 +425,9 @@ void UDPWFDServiceDiscovery::sendServiceDiscoveryPacket(bool isRequestPacket,
     UDPSocket::SendOptions* sndOpt = setDatagramOutInterface();
     socket.sendTo(payload, destAddr, destPort, sndOpt);
     numSent++;
+    if (groupStatistics) {
+        groupStatistics->setTotalUdpPacketsSent(numSent);
+    }
 }
 
 void UDPWFDServiceDiscovery::sendPacket() {
@@ -504,6 +513,9 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
             sendServiceDiscoveryPacket(false, false, sdReq->getOrgSendTime());
         }
         numRequestRcvd++;
+        if (groupStatistics) {
+            groupStatistics->setTotalRcvdRequests(numRequestRcvd);
+        }
     } else {
         simtime_t eed = 0;
         if (ServiceDiscoveryResponseDeviceInfo *respDevInfo =
@@ -521,12 +533,18 @@ void UDPWFDServiceDiscovery::processPacket(cPacket *pk) {
         }
 
         if (eed != 0) {
-            emit(endToEndDelaySignal, eed);
+            emit(reqToRespDelaySignal, eed);
             numResponseRcvd++;
+            if (groupStatistics) {
+                groupStatistics->setTotalRcvdResponces(numResponseRcvd);
+            }
         }
     }
     delete pk;
     numReceived++;
+    if (groupStatistics) {
+        groupStatistics->setTotalUdpPacketsRcvd(numReceived);
+    }
 }
 
 void UDPWFDServiceDiscovery::clearInterfaceIpAddress(string ifNamePar) {
@@ -881,6 +899,10 @@ string UDPWFDServiceDiscovery::getConflictFreeSubnet() {
         proSubnet = proposeSubnet();
         myInfo.proposedSubnet = proSubnet;
         numResolvedIpConflicts++;
+        if (groupStatistics) {
+            groupStatistics->setTotalResolsedIpConflicts(
+                    numResolvedIpConflicts);
+        }
     }
     return proSubnet;
 }

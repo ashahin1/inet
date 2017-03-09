@@ -22,7 +22,10 @@
 
 namespace inet {
 
-class TCPMgmtClientApp: public TCPBasicClientApp {
+class TCPMgmtClientApp: public TCPBasicClientApp, public cListener {
+public:
+    static simsignal_t rcvdMCPkSignal;
+    static simsignal_t sentMCPkSignal;
 protected:
     string status = "";
     string myGoSSID = "";
@@ -49,12 +52,15 @@ protected:
             IDoneCallback *doneCallback) override;
     virtual void handleMessage(cMessage *msg) override;
     virtual void handleTimer(cMessage *msg) override;
-    virtual void rescheduleOrDeleteTimer(simtime_t d, short int msgKind) override;
+    virtual void rescheduleOrDeleteTimer(simtime_t d, short int msgKind)
+            override;
     virtual void sendRequest() override;
     virtual void socketDataArrived(int connId, void *ptr, cPacket *msg,
             bool urgent) override;
     virtual void refreshDisplay() const override;
     virtual void setStatusString(const char *s);
+    virtual void receiveSignal(cComponent *source, simsignal_t signalID,
+            cObject *obj, cObject *details) override;
 
 private:
     void initMyHeartBeatRecord();

@@ -28,6 +28,9 @@ namespace inet {
 
 Define_Module(TCPMgmtClientApp);
 
+simsignal_t TCPMgmtClientApp::rcvdMCPkSignal = registerSignal("rcvdMCPk");
+simsignal_t TCPMgmtClientApp::sentMCPkSignal = registerSignal("sentMCPk");
+
 TCPMgmtClientApp::TCPMgmtClientApp() {
     // TODO Auto-generated constructor stub
 
@@ -60,6 +63,21 @@ void TCPMgmtClientApp::initialize(int stage) {
         pxNic = device->getModuleByPath(par("pxNicName").stringValue());
 
         WATCH(myHeartBeatRecord.ipAddress);
+
+        getSimulation()->getSystemModule()->subscribe(TCPAppBase::sentPkSignal,
+                this);
+        getSimulation()->getSystemModule()->subscribe(TCPAppBase::rcvdPkSignal,
+                this);
+
+    }
+}
+
+void TCPMgmtClientApp::receiveSignal(cComponent* source, simsignal_t signalID,
+        cObject* obj, cObject* details) {
+    if (signalID == TCPAppBase::sentPkSignal) {
+        emit(sentMCPkSignal, obj);
+    } else if (signalID == TCPAppBase::rcvdPkSignal) {
+        emit(rcvdMCPkSignal, obj);
     }
 }
 

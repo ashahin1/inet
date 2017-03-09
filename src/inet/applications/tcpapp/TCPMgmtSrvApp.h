@@ -27,7 +27,10 @@ namespace inet {
 using namespace std;
 typedef map<string, int> PxAssignment;
 
-class TCPMgmtSrvApp: public TCPGenericSrvApp {
+class TCPMgmtSrvApp: public TCPGenericSrvApp, public cListener {
+public:
+    static simsignal_t rcvdMSPkSignal;
+    static simsignal_t sentMSPkSignal;
 protected:
     ClipBoard *clpBrd = nullptr;
     IInterfaceTable *ift = nullptr;
@@ -58,6 +61,8 @@ protected:
     virtual void sendOrSchedule(cMessage *msg, simtime_t delay) override;
     virtual void handleMessage(cMessage *msg) override;
     virtual bool handleOperationStage(LifecycleOperation *operation, int stage, IDoneCallback *doneCallback) override;
+    virtual void receiveSignal(cComponent *source, simsignal_t signalID,
+            cObject *obj, cObject *details) override;
 
 private:
     void initMyHeartBeatRecord();

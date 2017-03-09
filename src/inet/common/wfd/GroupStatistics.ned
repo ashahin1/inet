@@ -42,4 +42,25 @@ simple GroupStatistics
         @statistic[CC_Count](title="Num of ConnComp"; source=CcCount; record=vector,last,stats);
         @signal[ConflictCount];
         @statistic[Conflict_Count](title="Num of Conflicts"; source=ConflictCount; record=vector,last,stats);
+
+        @signal[totalReqToRespDelay];
+        @statistic[totalReqToRespDelay](title="Total Request to Response Delay along all nodes"; source=totalReqToRespDelay; record=stats);
+        @signal[totalAllConsumedPower];
+        @statistic[totalAllConsumedPower](title="Total power consumption along all nodes"; source=totalAllConsumedPower; record=sum,histogram);
+        @signal[totalResidualEnergy];
+        @statistic[totalResidualEnergy](title="Total residual Energy along all nodes"; source=totalResidualEnergy; record=stats,histogram);
+
+        //UDP stats
+        @signal[totalUdpSentPk](type=cPacket);
+        @signal[totalUdpRcvdPk](type=cPacket);
+        @statistic[totalUdpRcvdPk](title="total udp received packets received along all nodes"; source=totalUdpRcvdPk; record=count,"sum(packetBytes)"; interpolationmode=none);
+        @statistic[totalUdpThroughput](title="total udp throughput"; unit=bps; source="throughput(totalUdpRcvdPk)"; record=last);
+        @statistic[totalUdpSentPk](title="total udp packets sent from all nodes"; source=totalUdpSentPk; record=count,"sum(packetBytes)"; interpolationmode=none);
+        @statistic[totalUdpRcvdPkLifetime](title="total udp received packet lifetime"; source="messageAge(totalUdpRcvdPk)"; unit=s; record=stats,histogram; interpolationmode=none);
+        //TCP stats
+        @signal[totalTcpSentPk](type=cPacket);
+        @signal[totalTcpRcvdPk](type=cPacket);
+        @statistic[totalTcpRcvdPk](title="packets received"; source=totalTcpRcvdPk; record=count,"sum(packetBytes)"; interpolationmode=none);
+        @statistic[totalTcpSentPk](title="packets sent"; source=totalTcpSentPk; record=count,"sum(packetBytes)"; interpolationmode=none);
+        @statistic[totalTcpendToEndDelay](title="end-to-end delay"; source="messageAge(totalTcpRcvdPk)"; unit=s; record=stats,histogram; interpolationmode=none);
 }

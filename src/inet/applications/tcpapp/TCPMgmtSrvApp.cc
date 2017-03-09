@@ -29,6 +29,9 @@ using namespace std;
 
 Define_Module(TCPMgmtSrvApp);
 
+simsignal_t TCPMgmtSrvApp::rcvdMSPkSignal = registerSignal("rcvdMSPk");
+simsignal_t TCPMgmtSrvApp::sentMSPkSignal = registerSignal("sentMSPk");
+
 TCPMgmtSrvApp::TCPMgmtSrvApp() {
     // TODO Auto-generated constructor stub
 
@@ -64,6 +67,20 @@ void TCPMgmtSrvApp::initialize(int stage) {
 
         ttlMsg = new cMessage("ttlMsg");
         ttlMsg->setKind(TTL_MSG);
+
+        getSimulation()->getSystemModule()->subscribe(TCPGenericSrvApp::sentPkSignal,
+                this);
+        getSimulation()->getSystemModule()->subscribe(TCPGenericSrvApp::rcvdPkSignal,
+                this);
+    }
+}
+
+void TCPMgmtSrvApp::receiveSignal(cComponent* source, simsignal_t signalID,
+        cObject* obj, cObject* details) {
+    if (signalID == TCPGenericSrvApp::sentPkSignal) {
+        emit(sentMSPkSignal, obj);
+    } else if (signalID == TCPGenericSrvApp::rcvdPkSignal) {
+        emit(rcvdMSPkSignal, obj);
     }
 }
 

@@ -41,7 +41,7 @@ public:
      * The signal that is used to publish the delay between sending
      * a request and receiving its response.
      */
-    static simsignal_t endToEndDelaySignal;
+    static simsignal_t reqToRespDelaySignal;
 protected:
     GroupStatistics *groupStatistics = nullptr;
     ClipBoard *clpBrd = nullptr;
