@@ -90,6 +90,7 @@ void GroupStatistics::initialize(int stage) {
     switchDhcpPeriod = par("switchDhcpPeriod").doubleValue();
     tearDownPeriod = par("tearDownPeriod").doubleValue();
 
+    WATCH(curProtocolRun);
     WATCH(goCount);
     WATCH(gmCount);
     WATCH(pmCount);
@@ -233,6 +234,7 @@ void GroupStatistics::clearAll() {
     curIndex = 0;
     conflictCount = 0;
 
+    /* We should not reset these values if we are doing multiple protocol runs per a simulation run.
     totalSentRequests = 0;
     totalRcvdRequests = 0;
     totalSentResponces = 0;
@@ -240,6 +242,7 @@ void GroupStatistics::clearAll() {
     totalUdpPacketsSent = 0;
     totalUdpPacketsRcvd = 0;
     totalResolsedIpConflicts = 0;
+    */
 
     goInfoMap.clear();
     ssidToDevIdMap.clear();
