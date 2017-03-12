@@ -100,6 +100,7 @@ void GroupStatistics::initialize(int stage) {
     WATCH(conflictCount);
     WATCH(totalUdpPacketsSent);
     WATCH(totalUdpPacketsRcvd);
+    WATCH_MAP(assignedSubnetCount);
 
     validDataMsg = new cMessage("validDataMsg");
     scheduleAt(
