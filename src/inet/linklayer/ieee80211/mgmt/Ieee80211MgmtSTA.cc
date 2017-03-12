@@ -856,10 +856,18 @@ void Ieee80211MgmtSTA::storeAPInfo(const MACAddress& address, const Ieee80211Bea
 void Ieee80211MgmtSTA::stop() {
     Ieee80211MgmtBase::stop();
 
+    if (scanning.activeScan)
+        host->unsubscribe(IRadio::receptionStateChangedSignal, this);
+
     isScanning = false;
     if (isAssociated) {
         disassociate();
+    } else if (assocTimeoutMsg) {
+        delete cancelEvent(assocTimeoutMsg);
+        assocTimeoutMsg = nullptr;
     }
+
+    clearAPList();
 }
 
 } // namespace ieee80211
