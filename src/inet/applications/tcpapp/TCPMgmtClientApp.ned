@@ -36,4 +36,6 @@ simple TCPMgmtClientApp extends TCPBasicClientApp
     startTime = default(10s);
     reconnectInterval = default(1s);
     @class(TCPMgmtClientApp);
+    @signal[sentMCPk];
+    @signal[rcvdMCPk];
 }
