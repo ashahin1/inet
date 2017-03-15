@@ -190,8 +190,8 @@ void Radio::handleMessageWhenDown(cMessage *message)
 {
     if (message->getArrivalGate() == radioIn || isReceptionTimer(message))
         delete message;
-    else
-        OperationalBase::handleMessageWhenDown(message);
+    //else
+        //OperationalBase::handleMessageWhenDown(message);
 }
 
 void Radio::handleMessageWhenUp(cMessage *message)
