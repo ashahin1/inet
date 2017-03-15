@@ -895,13 +895,13 @@ bool UDPWFDServiceDiscovery::subnetConflicting() {
 
 string UDPWFDServiceDiscovery::getConflictFreeSubnet() {
     string proSubnet = proposeSubnet();
-    while (subnetConflicting()) {
+    int allowedTries = par("subnetResolvingTries");
+    while (subnetConflicting() && (allowedTries-- > 0)) {
         proSubnet = proposeSubnet();
         myInfo.proposedSubnet = proSubnet;
         numResolvedIpConflicts++;
         if (groupStatistics) {
-            groupStatistics->addTotalResolsedIpConflicts(
-                    );
+            groupStatistics->addTotalResolsedIpConflicts();
         }
     }
     return proSubnet;

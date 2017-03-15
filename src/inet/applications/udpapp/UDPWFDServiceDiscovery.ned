@@ -38,6 +38,7 @@ simple UDPWFDServiceDiscovery extends UDPBasicApp
         string proxyNicName = default(".wlan[3]");
         int maxSubnetX = default(254);
         int maxSubnetY = default(254);
+        int subnetResolvingTries = default(100);
 
         double declareGoPeriod @unit(s);// = default(this.sendInterval * 10);
         double selectGoPeriod @unit(s);// = default(this.declareGoPeriod);
