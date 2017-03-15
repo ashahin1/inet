@@ -398,7 +398,7 @@ void TCP::addSockPair(TCPConnection *conn, L3Address localAddr, L3Address remote
     key.remotePort = conn->remotePort = remotePort;
 
     // make sure connection is unique
-    auto it = tcpConnMap.find(key);
+    /*auto it = tcpConnMap.find(key);
     if (it != tcpConnMap.end()) {
         // throw "address already in use" error
         if (remoteAddr.isUnspecified() && remotePort == -1)
@@ -407,7 +407,7 @@ void TCP::addSockPair(TCPConnection *conn, L3Address localAddr, L3Address remote
         else
             throw cRuntimeError("Address already in use: there is already a connection %s:%d to %s:%d",
                     localAddr.str().c_str(), localPort, remoteAddr.str().c_str(), remotePort);
-    }
+    }*/
 
     // then insert it into tcpConnMap
     tcpConnMap[key] = conn;
