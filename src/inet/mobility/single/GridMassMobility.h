@@ -31,7 +31,7 @@ namespace inet {
  *  within the simulation area (resulting in a regular grid).
  *
  * @ingroup mobility
- * @author Isabel Dietrich
+ * @author Ahmed Shahin
  */
 class INET_API GridMassMobility : public MassMobility
 {
