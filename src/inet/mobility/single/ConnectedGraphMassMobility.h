@@ -17,17 +17,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef __INET_STATIONARYCONNECTEDGRAPHMOBILITY_H
-#define __INET_STATIONARYCONNECTEDGRAPHMOBILITY_H
+#ifndef __INET_CONNECTEDGRAPHMASSMOBILITY_H
+#define __INET_CONNECTEDGRAPHMASSMOBILITY_H
 
 #include "inet/common/INETDefs.h"
 
-#include "inet/mobility/static/StationaryMobility.h"
+#include "inet/mobility/single/MassMobility.h"
 
 namespace inet {
 
 /**
- * @brief Mobility model which places all hosts at random making sure
+ * @brief Mobility model which initially places all hosts at random making sure
  * that every node has at least one reachable neighbor. The minimum distance
  * between any two nodes is controlled by the txPowerRange parameter. This parameter
  * should be adjusted according to the transmitting range of the radio. The
@@ -36,7 +36,7 @@ namespace inet {
  * @ingroup mobility
  * @author Ahmed Shahin
  */
-class INET_API StationaryConnectedGraphMobility : public StationaryMobility
+class INET_API ConnectedGraphMassMobility : public MassMobility
 {
   protected:
     static double previousNodeX;
@@ -46,10 +46,10 @@ class INET_API StationaryConnectedGraphMobility : public StationaryMobility
     virtual void setInitialPosition() override;
 
   public:
-    StationaryConnectedGraphMobility() {};
+    ConnectedGraphMassMobility() {};
 };
 
 } // namespace inet
 
-#endif // ifndef __INET_STATIONARYCONNECTEDGRAPHMOBILITY_H
+#endif // ifndef __INET_CONNECTEDGRAPHMASSMOBILITY_H
 

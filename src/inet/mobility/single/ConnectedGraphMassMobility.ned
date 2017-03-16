@@ -17,21 +17,27 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 //
 
-package inet.mobility.static;
+package inet.mobility.single;
 
-import inet.mobility.base.MobilityBase;
+import inet.mobility.base.MovingMobilityBase;
 
 //
-// Mobility model which places all hosts at random making sure
+// Mobility model which initially places all hosts at random making sure
 // that every node has at least one reachable neighbor. The minimum distance
 // between any two nodes is controlled by the txPowerRange parameter. This parameter
 // should be adjusted according to the transmitting range of the radio. The
 // resulting graph should be connected.
 //
-simple StationaryConnectedGraphMobility extends MobilityBase
+simple ConnectedGraphMassMobility extends MovingMobilityBase
 {
     parameters:
-        double txPowerRange @unit(m)= default(50m);
-        @class(StationaryConnectedGraphMobility);
+        double txPowerRange @unit(m) = default(50m);
+
+        double startAngle @unit(deg) = default(uniform(0deg, 360deg)); // initial angle in degrees
+        bool initFromDisplayString = default(false);
+        volatile double changeInterval @unit(s); // frequency of changing speed and angle (can be random)
+        volatile double changeAngleBy @unit(deg); // change angle by this much (can be random)
+        volatile double speed @unit(mps); // speed (can be random, updated every changeInterval)
+        @class(ConnectedGraphMassMobility);
 }
 

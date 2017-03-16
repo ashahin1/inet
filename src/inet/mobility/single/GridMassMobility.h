@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2017 Ahmed Shahin <ashahin1@umbc.edu, ahmed3012005@gmail.com>
- * Copyright (C) 2013 OpenSim Ltd.
+ * Copyright (C) 2006 Isabel Dietrich <isabel.dietrich@informatik.uni-erlangen.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,39 +17,33 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef __INET_STATIONARYCONNECTEDGRAPHMOBILITY_H
-#define __INET_STATIONARYCONNECTEDGRAPHMOBILITY_H
+#ifndef __INET_GRIDMASSMOBILITY_H
+#define __INET_GRIDMASSMOBILITY_H
 
 #include "inet/common/INETDefs.h"
 
-#include "inet/mobility/static/StationaryMobility.h"
+#include "inet/mobility/single/MassMobility.h"
 
 namespace inet {
 
 /**
- * @brief Mobility model which places all hosts at random making sure
- * that every node has at least one reachable neighbor. The minimum distance
- * between any two nodes is controlled by the txPowerRange parameter. This parameter
- * should be adjusted according to the transmitting range of the radio. The
- * resulting graph should be connected.
+ * @brief Mobility model which places all hosts intitally at constant distances
+ *  within the simulation area (resulting in a regular grid).
  *
  * @ingroup mobility
- * @author Ahmed Shahin
+ * @author Isabel Dietrich
  */
-class INET_API StationaryConnectedGraphMobility : public StationaryMobility
+class INET_API GridMassMobility : public MassMobility
 {
   protected:
-    static double previousNodeX;
-    static double previousNodeY;
-    static double previousNodeZ;
     /** @brief Initializes the position according to the mobility model. */
     virtual void setInitialPosition() override;
 
   public:
-    StationaryConnectedGraphMobility() {};
+    GridMassMobility() {};
 };
 
 } // namespace inet
 
-#endif // ifndef __INET_STATIONARYCONNECTEDGRAPHMOBILITY_H
+#endif // ifndef __INET_GRIDMASSMOBILITY_H
 
